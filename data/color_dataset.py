@@ -3,6 +3,7 @@ from data.base_dataset import BaseDataset, get_transform
 from data.image_folder import make_dataset
 from PIL import Image
 
+import pdb
 
 class ColorDataset(BaseDataset):
     @staticmethod
@@ -20,6 +21,9 @@ class ColorDataset(BaseDataset):
 
         self.transform = get_transform(opt)
 
+        # pdb.set_trace()
+
+
     def __getitem__(self, index):
         A_path = self.A_paths[index]
         A_img = Image.open(A_path).convert('RGB')
@@ -36,9 +40,13 @@ class ColorDataset(BaseDataset):
             tmp = A[0, ...] * 0.299 + A[1, ...] * 0.587 + A[2, ...] * 0.114
             A = tmp.unsqueeze(0)
 
+        # pdb.set_trace()
+
         return {'A': A, 'A_paths': A_path}
 
     def __len__(self):
+        # pdb.set_trace()
+
         return len(self.A_paths)
 
     def name(self):

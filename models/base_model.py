@@ -73,10 +73,15 @@ class BaseModel():
 
     # return visualization images. train.py will display these images, and save the images to a html
     def get_current_visuals(self):
+        # pdb.set_trace()
+
         visual_ret = OrderedDict()
         for name in self.visual_names:
             if isinstance(name, str):
                 visual_ret[name] = getattr(self, name)
+
+        # pdb.set_trace()
+
         return visual_ret
 
     # return traning losses/errors. train.py will print out these errors as debugging information

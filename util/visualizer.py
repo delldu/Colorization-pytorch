@@ -4,8 +4,8 @@ import ntpath
 import time
 from . import util
 from . import html
-from scipy.misc import imresize
-
+# xxxx3333 from scipy.misc import imresize
+import pdb
 
 # save image to the disk
 def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256):
@@ -19,12 +19,16 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256):
     for label, im_data in visuals.items():
         im = util.tensor2im(im_data)
         image_name = '%s_%s.png' % (name, label)
+        # pdb.set_trace()
+
         save_path = os.path.join(image_dir, image_name)
         h, w, _ = im.shape
         if aspect_ratio > 1.0:
-            im = imresize(im, (h, int(w * aspect_ratio)), interp='bicubic')
+            pass
+            # xxxx3333 im = imresize(im, (h, int(w * aspect_ratio)), interp='bicubic')
         if aspect_ratio < 1.0:
-            im = imresize(im, (int(h / aspect_ratio), w), interp='bicubic')
+            pass
+            # xxxx3333 im = imresize(im, (int(h / aspect_ratio), w), interp='bicubic')
         util.save_image(im, save_path)
 
         ims.append(image_name)

@@ -6,6 +6,8 @@ from .base_model import BaseModel
 from . import networks
 import numpy as np
 
+import pdb
+
 
 class Pix2PixModel(BaseModel):
     def name(self):
@@ -207,6 +209,8 @@ class Pix2PixModel(BaseModel):
         self.optimizer_G.step()
 
     def get_current_visuals(self):
+        # pdb.set_trace()
+
         from collections import OrderedDict
         visual_ret = OrderedDict()
 
@@ -231,6 +235,8 @@ class Pix2PixModel(BaseModel):
         C = self.fake_B_distr.shape[1]
         # scale to [-1, 2], then clamped to [-1, 1]
         visual_ret['fake_entr'] = torch.clamp(3 * self.fake_B_entr.expand(-1, 3, -1, -1) / np.log(C) - 1, -1, 1)
+
+        # pdb.set_trace()
 
         return visual_ret
 

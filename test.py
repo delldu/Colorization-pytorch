@@ -10,8 +10,12 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
+from data.image_folder import ImageFolder
+
 from util import util
 import numpy as np
+
+import pdb
 
 
 if __name__ == '__main__':
@@ -25,22 +29,25 @@ if __name__ == '__main__':
     opt.batch_size = 1  # test code only supports batch_size = 1
     opt.display_id = -1  # no visdom display
     opt.phase = 'val'
-    opt.dataroot = './dataset/ilsvrc2012/%s/' % opt.phase
+    opt.dataroot = './datasets/%s/' % opt.phase
+
     opt.serial_batches = True
     opt.aspect_ratio = 1.
 
-    dataset = torchvision.datasets.ImageFolder(opt.dataroot,
-                                               transform=transforms.Compose([
+    # torchvision.datasets.
+    dataset = ImageFolder(opt.dataroot, transform=transforms.Compose([
                                                    transforms.Resize((opt.loadSize, opt.loadSize)),
                                                    transforms.ToTensor()]))
-    dataset_loader = torch.utils.data.DataLoader(dataset, batch_size=opt.batch_size, shuffle=not opt.serial_batches)
 
+    dataset_loader = torch.utils.data.DataLoader(dataset, batch_size=opt.batch_size, shuffle=not opt.serial_batches)
     model = create_model(opt)
+
     model.setup(opt)
     model.eval()
 
     # create website
     web_dir = os.path.join(opt.results_dir, opt.name, '%s_%s' % (opt.phase, opt.which_epoch))
+
     webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.which_epoch))
 
     # statistics
@@ -48,12 +55,14 @@ if __name__ == '__main__':
     entrs = np.zeros((opt.how_many, S))
 
     for i, data_raw in enumerate(dataset_loader):
-        data_raw[0] = data_raw[0].cuda()
-        data_raw[0] = util.crop_mult(data_raw[0], mult=8)
+        data_raw = data_raw.cuda()
+        data_raw = util.crop_mult(data_raw, mult=8)
 
         # with no points
         for (pp, sample_p) in enumerate(sample_ps):
-            img_path = [string.replace('%08d_%.3f' % (i, sample_p), '.', 'p')]
+            xxx = '%08d_%.3f' % (i, sample_p)
+            img_path = [xxx.replace('.', 'p')]
+
             data = util.get_colorization_data(data_raw, opt, ab_thresh=0., p=sample_p)
 
             model.set_input(data)

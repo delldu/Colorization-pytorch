@@ -11,8 +11,10 @@ from PIL import Image
 import os
 import os.path
 
+import pdb
+
 IMG_EXTENSIONS = [
-    '.jpg', '.JPG', '.jpeg', '.JPEG',
+    '.jpg', '.JPG', '.jpeg', 'JPEG',
     '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',
 ]
 
@@ -24,6 +26,7 @@ def is_image_file(filename):
 def make_dataset(dir):
     images = []
     assert os.path.isdir(dir), '%s is not a valid directory' % dir
+    # pdb.set_trace()
 
     for root, _, fnames in sorted(os.walk(dir)):
         for fname in fnames:
@@ -57,8 +60,10 @@ class ImageFolder(data.Dataset):
     def __getitem__(self, index):
         path = self.imgs[index]
         img = self.loader(path)
+
         if self.transform is not None:
             img = self.transform(img)
+
         if self.return_paths:
             return img, path
         else:

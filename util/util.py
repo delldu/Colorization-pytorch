@@ -6,6 +6,8 @@ import os
 from collections import OrderedDict
 from IPython import embed
 
+import pdb
+
 # Converts a Tensor into an image array (numpy)
 # |imtype|: the desired type of the converted numpy array
 def tensor2im(input_image, imtype=np.uint8):
@@ -20,6 +22,7 @@ def tensor2im(input_image, imtype=np.uint8):
     return image_numpy.astype(imtype)
 
 
+# xxxx3333
 def diagnose_network(net, name='network'):
     mean = 0.0
     count = 0
@@ -62,12 +65,17 @@ def mkdir(path):
 
 
 def get_subset_dict(in_dict,keys):
+    # pdb.set_trace()
+
     if(len(keys)):
         subset = OrderedDict()
         for key in keys:
             subset[key] = in_dict[key]
     else:
         subset = in_dict
+
+    # pdb.set_trace()
+
     return subset
 
 
@@ -190,9 +198,13 @@ def lab2rgb(lab_rs, opt):
     return out
 
 def get_colorization_data(data_raw, opt, ab_thresh=5., p=.125, num_points=None):
+    # pdb.set_trace()
+
     data = {}
 
-    data_lab = rgb2lab(data_raw[0], opt)
+    # data_lab = rgb2lab(data_raw[0], opt)
+    data_lab = rgb2lab(data_raw, opt)
+
     data['A'] = data_lab[:,[0,],:,:]
     data['B'] = data_lab[:,1:,:,:]
 
@@ -205,6 +217,8 @@ def get_colorization_data(data_raw, opt, ab_thresh=5., p=.125, num_points=None):
         if(torch.sum(mask)==0):
             return None
 
+    # pdb.set_trace()
+
     return add_color_patches_rand_gt(data, opt, p=p, num_points=num_points)
 
 def add_color_patches_rand_gt(data,opt,p=.125,num_points=None,use_avg=True,samp='normal'):
@@ -215,6 +229,8 @@ def add_color_patches_rand_gt(data,opt,p=.125,num_points=None,use_avg=True,samp=
 #   Location of points
 #   - if samp is 'normal', draw from N(0.5, 0.25) of image
 #   - otherwise, draw from U[0, 1] of image
+    # pdb.set_trace()
+
     N,C,H,W = data['B'].shape
 
     data['hint_B'] = torch.zeros_like(data['B'])
@@ -256,6 +272,8 @@ def add_color_patches_rand_gt(data,opt,p=.125,num_points=None,use_avg=True,samp=
 
     data['mask_B']-=opt.mask_cent
 
+    # pdb.set_trace()
+
     return data
 
 def add_color_patch(data,mask,opt,P=1,hw=[128,128],ab=[0,0]):
@@ -271,8 +289,10 @@ def crop_mult(data,mult=16,HWmax=[800,1200]):
     H,W = data.shape[2:]
     Hnew = int(min(H/mult*mult,HWmax[0]))
     Wnew = int(min(W/mult*mult,HWmax[1]))
-    h = (H-Hnew)/2
-    w = (W-Wnew)/2
+    h = (H-Hnew)//2
+    w = (W-Wnew)//2
+
+    # pdb.set_trace()
 
     return data[:,:,h:h+Hnew,w:w+Wnew]
 
