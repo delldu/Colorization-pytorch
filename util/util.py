@@ -75,6 +75,8 @@ def get_subset_dict(in_dict,keys):
         subset = in_dict
 
     # pdb.set_trace()
+    # (Pdb) pp subset.keys()
+    # odict_keys(['gray', 'hint', 'hint_ab', 'fake_entr', 'real', 'fake_reg', 'real_ab', 'fake_ab_reg'])
 
     return subset
 
@@ -199,6 +201,8 @@ def lab2rgb(lab_rs, opt):
 
 def get_colorization_data(data_raw, opt, ab_thresh=5., p=.125, num_points=None):
     # pdb.set_trace()
+    # (Pdb) pp ab_thresh
+    # 0.0
 
     data = {}
 
@@ -229,17 +233,23 @@ def add_color_patches_rand_gt(data,opt,p=.125,num_points=None,use_avg=True,samp=
 #   Location of points
 #   - if samp is 'normal', draw from N(0.5, 0.25) of image
 #   - otherwise, draw from U[0, 1] of image
-    # pdb.set_trace()
-
     N,C,H,W = data['B'].shape
 
     data['hint_B'] = torch.zeros_like(data['B'])
     data['mask_B'] = torch.zeros_like(data['A'])
 
+    # pdb.set_trace()
+    # N == 1
+    # p = 1.0
+    # num_points = None
+    # use_avg = True
+    # samp = 'normal'
+
     for nn in range(N):
         pp = 0
         cont_cond = True
         while(cont_cond):
+            # num_points == None !!!
             if(num_points is None): # draw from geometric
                 # embed()
                 cont_cond = np.random.rand() < (1-p)
@@ -249,6 +259,8 @@ def add_color_patches_rand_gt(data,opt,p=.125,num_points=None,use_avg=True,samp=
                 continue
 
             P = np.random.choice(opt.sample_Ps) # patch size
+            # (Pdb) pp opt.sample_Ps
+            # [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
             # sample location
             if(samp=='normal'): # geometric distribution
@@ -266,6 +278,12 @@ def add_color_patches_rand_gt(data,opt,p=.125,num_points=None,use_avg=True,samp=
                 data['hint_B'][nn,:,h:h+P,w:w+P] = data['B'][nn,:,h:h+P,w:w+P]
 
             data['mask_B'][nn,:,h:h+P,w:w+P] = 1
+
+            # pdb.set_trace()
+            # (Pdb) pp P
+            # 4
+            # (Pdb) pp h,w
+            # (223, 173)
 
             # increment counter
             pp+=1

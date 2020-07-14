@@ -105,6 +105,7 @@ class Pix2PixModel(BaseModel):
             self.avg_losses[loss_name] = 0
 
     def set_input(self, input):
+        # self.half == False
         if(self.half):
             for key in input.keys():
                 input[key] = input[key].half()
@@ -118,6 +119,10 @@ class Pix2PixModel(BaseModel):
         self.mask_B_nc = self.mask_B + self.opt.mask_cent
 
         self.real_B_enc = util.encode_ab_ind(self.real_B[:, :, ::4, ::4], self.opt)
+        # pdb.set_trace()
+        # (Pdb) pp self.real_B_enc.size()
+        # torch.Size([1, 1, 64, 64])
+
 
     def forward(self):
         (self.fake_B_class, self.fake_B_reg) = self.netG(self.real_A, self.hint_B, self.mask_B)
@@ -128,6 +133,7 @@ class Pix2PixModel(BaseModel):
         self.fake_B_dec_mean = self.netG.module.upsample4(util.decode_mean(self.fake_B_distr, self.opt))
 
         self.fake_B_entr = self.netG.module.upsample4(-torch.sum(self.fake_B_distr * torch.log(self.fake_B_distr + 1.e-10), dim=1, keepdim=True))
+
         # embed()
 
     def backward_D(self):

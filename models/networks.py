@@ -75,6 +75,21 @@ def define_G(input_nc, output_nc, ngf, which_model_netG, norm='batch', use_dropo
     netG = None
     norm_layer = get_norm_layer(norm_type=norm)
 
+    # pdb.set_trace()
+    # (Pdb) a
+    # input_nc = 4
+    # output_nc = 2
+    # ngf = 64
+    # which_model_netG = 'siggraph'
+    # norm = 'batch'
+    # use_dropout = True
+    # init_type = 'normal'
+    # gpu_ids = [0]
+    # use_tanh = True
+    # classification = False
+    # (Pdb) pp norm_layer
+    # functools.partial(<class 'torch.nn.modules.batchnorm.BatchNorm2d'>, affine=True)
+
     if which_model_netG == 'resnet_9blocks':
         netG = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9)
     elif which_model_netG == 'resnet_6blocks':

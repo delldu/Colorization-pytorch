@@ -2,7 +2,7 @@ import os
 import torch
 from collections import OrderedDict
 from . import networks
-
+import pdb
 
 class BaseModel():
     # modify parser to add command line options,
@@ -52,6 +52,7 @@ class BaseModel():
     # used in test time, wrapping `forward` in no_grad() so we don't save
     # intermediate steps for backprop
     def test(self, compute_losses=False):
+        # pdb.set_trace()
         with torch.no_grad():
             self.forward()
             if(compute_losses):

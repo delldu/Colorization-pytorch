@@ -19,7 +19,9 @@ import pdb
 
 
 if __name__ == '__main__':
-    sample_ps = [1., .125, .03125]
+    # sample_ps = [1., .125, .03125]
+    sample_ps = [1., .050, 0.020]
+
     to_visualize = ['gray', 'hint', 'hint_ab', 'fake_entr', 'real', 'fake_reg', 'real_ab', 'fake_ab_reg', ]
     S = len(sample_ps)
 
@@ -64,6 +66,22 @@ if __name__ == '__main__':
             img_path = [xxx.replace('.', 'p')]
 
             data = util.get_colorization_data(data_raw, opt, ab_thresh=0., p=sample_p)
+
+            # pdb.set_trace()
+            # (Pdb) pp data.keys()
+            # dict_keys(['A', 'B', 'hint_B', 'mask_B'])
+            # (Pdb) pp data['mask_B'].size()
+            # torch.Size([1, 1, 256, 256])
+            # (Pdb) pp data['hint_B'].size()
+            # torch.Size([1, 2, 256, 256])
+            # (Pdb) pp data['hint_B'].max()
+            # tensor(0., device='cuda:0')
+            # (Pdb) pp data['hint_B'].min()
+            # tensor(0., device='cuda:0')
+            # (Pdb) pp data['mask_B'].min()
+            # tensor(-0.5000, device='cuda:0')
+            # (Pdb) pp data['mask_B'].max()
+            # tensor(-0.5000, device='cuda:0')
 
             model.set_input(data)
             model.test(True)  # True means that losses will be computed
