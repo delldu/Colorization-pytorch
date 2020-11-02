@@ -67,7 +67,7 @@ class Pix2PixModel(BaseModel):
             self.criterionGAN = networks.GANLoss(use_lsgan=not opt.no_lsgan).to(self.device)
             # self.criterionL1 = torch.nn.L1Loss()
             self.criterionL1 = networks.L1Loss()
-            self.criterionHuber = networks.HuberLoss(delta=1. / opt.ab_norm)
+            # self.criterionHuber = networks.HuberLoss(delta=1. / opt.ab_norm)
 
             # if(opt.classification):
             self.criterionCE = torch.nn.CrossEntropyLoss()
@@ -111,15 +111,19 @@ class Pix2PixModel(BaseModel):
                 input[key] = input[key].half()
 
         AtoB = self.opt.which_direction == 'AtoB'
+        # pdb.set_trace()
+        # pp self.opt.which_direction, 'AtoB'
+
         self.real_A = input['A' if AtoB else 'B'].to(self.device)
         self.real_B = input['B' if AtoB else 'A'].to(self.device)
+
         # self.image_paths = input['A_paths' if AtoB else 'B_paths']
         self.hint_B = input['hint_B'].to(self.device)
         self.mask_B = input['mask_B'].to(self.device)
         self.mask_B_nc = self.mask_B + self.opt.mask_cent
 
         self.real_B_enc = util.encode_ab_ind(self.real_B[:, :, ::4, ::4], self.opt)
-        # pdb.set_trace()
+        # pdb.set_trace(), what ???
         # (Pdb) pp self.real_B_enc.size()
         # torch.Size([1, 1, 64, 64])
 

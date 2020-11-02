@@ -36,7 +36,29 @@ if __name__ == '__main__':
     opt.serial_batches = True
     opt.aspect_ratio = 1.
 
+
     # torchvision.datasets.
+    # pdb.set_trace();
+    # (Pdb) pp opt
+    # Namespace(A=23.0, B=23.0, ab_max=110.0, ab_norm=110.0, ab_quant=10.0, aspect_ratio=1.0, 
+    #     avg_loss_alpha=0.986, batch_size=1, beta1=0.9, checkpoints_dir='./checkpoints', 
+    #     classification=False, dataroot='./datasets/val/', dataset_mode='aligned', 
+    #     display_freq=10000, display_id=-1, display_ncols=5, display_port=8097, 
+    #     display_server='http://localhost', display_winsize=256, epoch_count=0, 
+    #     fineSize=176, gpu_ids=[0], half=False, how_many=200, init_type='normal', 
+    #     input_nc=1, isTrain=True, l_cent=50.0, l_norm=100.0, lambda_A=1.0, lambda_B=1.0, 
+    #     lambda_GAN=0.0, lambda_identity=0.5, loadSize=256, load_model=True, lr=0.0001, 
+    #     lr_decay_iters=50, lr_policy='lambda', mask_cent=0.5, max_dataset_size=inf, 
+    #     model='pix2pix', n_layers_D=3, name='siggraph_retrained', 
+    #     ndf=64, ngf=64, niter=100, niter_decay=100, no_dropout=False, no_flip=False, 
+    #     no_html=False, no_lsgan=False, norm='batch', num_threads=1, output_nc=2, phase='val', 
+    #     pool_size=50, print_freq=200, resize_or_crop='resize_and_crop', 
+    #     results_dir='./results/', sample_Ps=[1, 2, 3, 4, 5, 6, 7, 8, 9], 
+    #     sample_p=1.0, save_epoch_freq=1, save_latest_freq=5000, serial_batches=True, 
+    #     suffix='', update_html_freq=10000, verbose=False, which_direction='AtoB', 
+    #     which_epoch='latest', which_model_netD='basic', which_model_netG='siggraph')
+
+
     dataset = ImageFolder(opt.dataroot, transform=transforms.Compose([
                                                    transforms.Resize((opt.loadSize, opt.loadSize)),
                                                    transforms.ToTensor()]))
@@ -47,6 +69,8 @@ if __name__ == '__main__':
     model.setup(opt)
     model.eval()
 
+    # pdb.set_trace();
+
     # create website
     web_dir = os.path.join(opt.results_dir, opt.name, '%s_%s' % (opt.phase, opt.which_epoch))
 
@@ -56,9 +80,16 @@ if __name__ == '__main__':
     psnrs = np.zeros((opt.how_many, S))
     entrs = np.zeros((opt.how_many, S))
 
+    # pp dataset_loader.dataset.imgs
+    # ['./datasets/val/100APPLE/IMG_0429.png',
+    # './datasets/val/100APPLE/IMG_0791.png']
     for i, data_raw in enumerate(dataset_loader):
         data_raw = data_raw.cuda()
         data_raw = util.crop_mult(data_raw, mult=8)
+
+        # pdb.set_trace();
+        # (Pdb) pp data_raw.size()
+        # torch.Size([1, 3, 256, 256])
 
         # with no points
         for (pp, sample_p) in enumerate(sample_ps):
@@ -67,17 +98,18 @@ if __name__ == '__main__':
 
             data = util.get_colorization_data(data_raw, opt, ab_thresh=0., p=sample_p)
 
-            # pdb.set_trace()
             # (Pdb) pp data.keys()
             # dict_keys(['A', 'B', 'hint_B', 'mask_B'])
-            # (Pdb) pp data['mask_B'].size()
-            # torch.Size([1, 1, 256, 256])
+
             # (Pdb) pp data['hint_B'].size()
             # torch.Size([1, 2, 256, 256])
             # (Pdb) pp data['hint_B'].max()
             # tensor(0., device='cuda:0')
             # (Pdb) pp data['hint_B'].min()
             # tensor(0., device='cuda:0')
+
+            # (Pdb) pp data['mask_B'].size()
+            # torch.Size([1, 1, 256, 256])
             # (Pdb) pp data['mask_B'].min()
             # tensor(-0.5000, device='cuda:0')
             # (Pdb) pp data['mask_B'].max()

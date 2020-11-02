@@ -23,17 +23,17 @@ def tensor2im(input_image, imtype=np.uint8):
 
 
 # xxxx3333
-def diagnose_network(net, name='network'):
-    mean = 0.0
-    count = 0
-    for param in net.parameters():
-        if param.grad is not None:
-            mean += torch.mean(torch.abs(param.grad.data))
-            count += 1
-    if count > 0:
-        mean = mean / count
-    print(name)
-    print(mean)
+# def diagnose_network(net, name='network'):
+#     mean = 0.0
+#     count = 0
+#     for param in net.parameters():
+#         if param.grad is not None:
+#             mean += torch.mean(torch.abs(param.grad.data))
+#             count += 1
+#     if count > 0:
+#         mean = mean / count
+#     print(name)
+#     print(mean)
 
 
 def save_image(image_numpy, image_path):
@@ -80,8 +80,6 @@ def get_subset_dict(in_dict,keys):
 
     return subset
 
-
-
 # Color conversion code
 def rgb2xyz(rgb): # rgb from [0,1]
     # xyz_from_rgb = np.array([[0.412453, 0.357580, 0.180423],
@@ -97,11 +95,23 @@ def rgb2xyz(rgb): # rgb from [0,1]
     x = .412453*rgb[:,0,:,:]+.357580*rgb[:,1,:,:]+.180423*rgb[:,2,:,:]
     y = .212671*rgb[:,0,:,:]+.715160*rgb[:,1,:,:]+.072169*rgb[:,2,:,:]
     z = .019334*rgb[:,0,:,:]+.119193*rgb[:,1,:,:]+.950227*rgb[:,2,:,:]
+    # (Pdb) pp x.size(), y.size(), z.size()
+    # (torch.Size([1, 256, 256]),
+    #  torch.Size([1, 256, 256]),
+    #  torch.Size([1, 256, 256]))
+
     out = torch.cat((x[:,None,:,:],y[:,None,:,:],z[:,None,:,:]),dim=1)
 
     # if(torch.sum(torch.isnan(out))>0):
         # print('rgb2xyz')
         # embed()
+
+    # pdb.set_trace()
+    # (Pdb) pp rgb.size()
+    # torch.Size([1, 3, 256, 256])
+    # (Pdb) pp out.size()
+    # torch.Size([1, 3, 256, 256])
+
     return out
 
 def xyz2rgb(xyz):
@@ -130,6 +140,10 @@ def xyz2rgb(xyz):
 def xyz2lab(xyz):
     # 0.95047, 1., 1.08883 # white
     sc = torch.Tensor((0.95047, 1., 1.08883))[None,:,None,None]
+    # pdb.set_trace()
+    # (Pdb) pp sc.size()
+    # torch.Size([1, 3, 1, 1])
+
     if(xyz.is_cuda):
         sc = sc.cuda()
 
@@ -169,6 +183,8 @@ def lab2xyz(lab):
     out = (out**3.)*mask + (out - 16./116.)/7.787*(1-mask)
 
     sc = torch.Tensor((0.95047, 1., 1.08883))[None,:,None,None]
+    # pdb.set_trace()
+
     sc = sc.to(out.device)
 
     out = out*sc
@@ -181,8 +197,13 @@ def lab2xyz(lab):
 
 def rgb2lab(rgb, opt):
     lab = xyz2lab(rgb2xyz(rgb))
+
     l_rs = (lab[:,[0],:,:]-opt.l_cent)/opt.l_norm
     ab_rs = lab[:,1:,:,:]/opt.ab_norm
+    # pdb.set_trace()
+    # (Pdb) pp opt.l_cent,opt.l_norm,opt.ab_norm
+    # (50.0, 100.0, 110.0)
+
     out = torch.cat((l_rs,ab_rs),dim=1)
     # if(torch.sum(torch.isnan(out))>0):
         # print('rgb2lab')
@@ -193,6 +214,7 @@ def lab2rgb(lab_rs, opt):
     l = lab_rs[:,[0],:,:]*opt.l_norm + opt.l_cent
     ab = lab_rs[:,1:,:,:]*opt.ab_norm
     lab = torch.cat((l,ab),dim=1)
+
     out = xyz2rgb(lab2xyz(lab))
     # if(torch.sum(torch.isnan(out))>0):
         # print('lab2rgb')
@@ -200,7 +222,6 @@ def lab2rgb(lab_rs, opt):
     return out
 
 def get_colorization_data(data_raw, opt, ab_thresh=5., p=.125, num_points=None):
-    # pdb.set_trace()
     # (Pdb) pp ab_thresh
     # 0.0
 
@@ -222,6 +243,8 @@ def get_colorization_data(data_raw, opt, ab_thresh=5., p=.125, num_points=None):
             return None
 
     # pdb.set_trace()
+    # (Pdb) pp ab_thresh
+    # 0.0
 
     return add_color_patches_rand_gt(data, opt, p=p, num_points=num_points)
 
@@ -289,18 +312,29 @@ def add_color_patches_rand_gt(data,opt,p=.125,num_points=None,use_avg=True,samp=
             pp+=1
 
     data['mask_B']-=opt.mask_cent
-
     # pdb.set_trace()
+    # (Pdb) pp data.keys()
+    # dict_keys(['A', 'B', 'hint_B', 'mask_B'])
+    # (Pdb) pp data['A'].size(), data['B'].size(), data['hint_B'].size(), data['mask_B'].size()
+    # (torch.Size([1, 1, 256, 256]),
+    #  torch.Size([1, 2, 256, 256]),
+    #  torch.Size([1, 2, 256, 256]),
+    #  torch.Size([1, 1, 256, 256])) , data['mask_B'].size()
+    # (Pdb) pp opt.mask_cent
+    # 0.5
 
     return data
 
-def add_color_patch(data,mask,opt,P=1,hw=[128,128],ab=[0,0]):
-    # Add a color patch at (h,w) with color (a,b)
-    data[:,0,hw[0]:hw[0]+P,hw[1]:hw[1]+P] = 1.*ab[0]/opt.ab_norm
-    data[:,1,hw[0]:hw[0]+P,hw[1]:hw[1]+P] = 1.*ab[1]/opt.ab_norm
-    mask[:,:,hw[0]:hw[0]+P,hw[1]:hw[1]+P] = 1-opt.mask_cent
+# xxxx3333
+# def add_color_patch(data,mask,opt,P=1,hw=[128,128],ab=[0,0]):
+#     # Add a color patch at (h,w) with color (a,b)
+#     data[:,0,hw[0]:hw[0]+P,hw[1]:hw[1]+P] = 1.*ab[0]/opt.ab_norm
+#     data[:,1,hw[0]:hw[0]+P,hw[1]:hw[1]+P] = 1.*ab[1]/opt.ab_norm
+#     mask[:,:,hw[0]:hw[0]+P,hw[1]:hw[1]+P] = 1-opt.mask_cent
 
-    return (data,mask)
+#     pdb.set_trace()
+
+#     return (data,mask)
 
 def crop_mult(data,mult=16,HWmax=[800,1200]):
     # crop image to a multiple
@@ -311,7 +345,10 @@ def crop_mult(data,mult=16,HWmax=[800,1200]):
     w = (W-Wnew)//2
 
     # pdb.set_trace()
-
+    # (Pdb) pp data.size()
+    # torch.Size([1, 3, 256, 256])
+    # (Pdb) pp h,w
+    # (0, 0)
     return data[:,:,h:h+Hnew,w:w+Wnew]
 
 def encode_ab_ind(data_ab, opt):
@@ -323,6 +360,10 @@ def encode_ab_ind(data_ab, opt):
 
     data_ab_rs = torch.round((data_ab*opt.ab_norm + opt.ab_max)/opt.ab_quant) # normalized bin number
     data_q = data_ab_rs[:,[0],:,:]*opt.A + data_ab_rs[:,[1],:,:]
+    # pdb.set_trace()
+    # (Pdb) pp data_ab_rs.size(), data_q.size()
+    # (torch.Size([1, 2, 64, 64]), torch.Size([1, 1, 64, 64]))
+
     return data_q
 
 def decode_ind_ab(data_q, opt):
@@ -342,6 +383,7 @@ def decode_ind_ab(data_q, opt):
         type_out = torch.FloatTensor
     data_ab = ((data_ab.type(type_out)*opt.ab_quant) - opt.ab_max)/opt.ab_norm
 
+    # pdb.set_trace()
     return data_ab
 
 def decode_max_ab(data_ab_quant, opt):
@@ -352,6 +394,8 @@ def decode_max_ab(data_ab_quant, opt):
     #   data_ab         Nx2xHxW \in [-1,1]
 
     data_q = torch.argmax(data_ab_quant,dim=1)[:,None,:,:]
+    # pdb.set_trace(), what ???
+
     return decode_ind_ab(data_q, opt)
 
 def decode_mean(data_ab_quant, opt):
@@ -384,6 +428,7 @@ def calculate_psnr_np(img1, img2):
     cur_MSE = np.mean(SE_map)
     return 20*np.log10(255./np.sqrt(cur_MSE))
 
+# xxxx3333
 def calculate_psnr_torch(img1, img2):
     SE_map = (1.*img1-img2)**2
     cur_MSE = torch.mean(SE_map)

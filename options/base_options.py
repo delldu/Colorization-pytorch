@@ -4,7 +4,7 @@ from util import util
 import torch
 import models
 import data
-
+import pdb
 
 class BaseOptions():
     def __init__(self):
@@ -132,7 +132,14 @@ class BaseOptions():
                 opt.gpu_ids.append(id)
         if len(opt.gpu_ids) > 0:
             torch.cuda.set_device(opt.gpu_ids[0])
+
         opt.A = 2 * opt.ab_max / opt.ab_quant + 1
+        # pdb.set_trace()
+        # pp opt.ab_max, opt.ab_quant
+        # (110.0, 10.0)
+        # (Pdb) pp opt.A
+        # 23.0
+
         opt.B = opt.A
 
         self.opt = opt
