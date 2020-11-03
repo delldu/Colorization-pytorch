@@ -1,12 +1,13 @@
-import torch
-from collections import OrderedDict
-from util.image_pool import ImagePool
-from util import util
-from .base_model import BaseModel
-from . import networks
-import numpy as np
-
 import pdb
+from collections import OrderedDict
+
+import numpy as np
+import torch
+from util import util
+from util.image_pool import ImagePool
+
+from . import networks
+from .base_model import BaseModel
 
 
 class Pix2PixModel(BaseModel):
@@ -52,7 +53,7 @@ class Pix2PixModel(BaseModel):
         num_in = opt.input_nc + opt.output_nc + 1
         self.netG = networks.define_G(num_in, opt.output_nc, opt.ngf,
                                       opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids,
-                                      use_tanh=True, classification=opt.classification)
+                                      use_tanh=True)
 
         if self.isTrain:
             use_sigmoid = opt.no_lsgan
@@ -67,7 +68,6 @@ class Pix2PixModel(BaseModel):
             self.criterionGAN = networks.GANLoss(use_lsgan=not opt.no_lsgan).to(self.device)
             # self.criterionL1 = torch.nn.L1Loss()
             self.criterionL1 = networks.L1Loss()
-            # self.criterionHuber = networks.HuberLoss(delta=1. / opt.ab_norm)
 
             # if(opt.classification):
             self.criterionCE = torch.nn.CrossEntropyLoss()
@@ -83,33 +83,15 @@ class Pix2PixModel(BaseModel):
                                                     lr=opt.lr, betas=(opt.beta1, 0.999))
                 self.optimizers.append(self.optimizer_D)
 
-        if self.half:
-            for model_name in self.model_names:
-                net = getattr(self, 'net' + model_name)
-                net.half()
-                for layer in net.modules():
-                    if(isinstance(layer, torch.nn.BatchNorm2d)):
-                        layer.float()
-                print('Net %s half precision' % model_name)
-
         # initialize average loss values
         self.avg_losses = OrderedDict()
         self.avg_loss_alpha = opt.avg_loss_alpha
         self.error_cnt = 0
 
-        # self.avg_loss_alpha = 0.9993 # half-life of 1000 iterations
-        # self.avg_loss_alpha = 0.9965 # half-life of 200 iterations
-        # self.avg_loss_alpha = 0.986 # half-life of 50 iterations
-        # self.avg_loss_alpha = 0. # no averaging
         for loss_name in self.loss_names:
             self.avg_losses[loss_name] = 0
 
     def set_input(self, input):
-        # self.half == False
-        if(self.half):
-            for key in input.keys():
-                input[key] = input[key].half()
-
         AtoB = self.opt.which_direction == 'AtoB'
         # pdb.set_trace()
         # pp self.opt.which_direction, 'AtoB'
@@ -146,13 +128,11 @@ class Pix2PixModel(BaseModel):
         fake_AB = self.fake_AB_pool.query(torch.cat((self.real_A, self.fake_B), 1))
         pred_fake = self.netD(fake_AB.detach())
         self.loss_D_fake = self.criterionGAN(pred_fake, False)
-        # self.loss_D_fake = 0
 
         # Real
         real_AB = torch.cat((self.real_A, self.real_B), 1)
         pred_real = self.netD(real_AB)
         self.loss_D_real = self.criterionGAN(pred_real, True)
-        # self.loss_D_real = 0
 
         # Combined loss
         self.loss_D = (self.loss_D_fake + self.loss_D_real) * 0.5
@@ -167,35 +147,29 @@ class Pix2PixModel(BaseModel):
         # classification statistics
         self.loss_G_CE = self.criterionCE(self.fake_B_class.type(torch.cuda.FloatTensor),
                                           self.real_B_enc[:, 0, :, :].type(torch.cuda.LongTensor))  # cross-entropy loss
-        self.loss_G_entr = torch.mean(self.fake_B_entr.type(torch.cuda.FloatTensor))  # entropy of predicted distribution
-        self.loss_G_entr_hint = torch.mean(self.fake_B_entr.type(torch.cuda.FloatTensor) * self.mask_B_nc.type(torch.cuda.FloatTensor)) / mask_avg  # entropy of predicted distribution at hint points
+        # self.loss_G_entr = torch.mean(self.fake_B_entr.type(torch.cuda.FloatTensor))  # entropy of predicted distribution
+        # self.loss_G_entr_hint = torch.mean(self.fake_B_entr.type(torch.cuda.FloatTensor) * self.mask_B_nc.type(torch.cuda.FloatTensor)) / mask_avg  # entropy of predicted distribution at hint points
 
         # regression statistics
-        self.loss_G_L1_max = 10 * torch.mean(self.criterionL1(self.fake_B_dec_max.type(torch.cuda.FloatTensor),
-                                                              self.real_B.type(torch.cuda.FloatTensor)))
-        self.loss_G_L1_mean = 10 * torch.mean(self.criterionL1(self.fake_B_dec_mean.type(torch.cuda.FloatTensor),
-                                                               self.real_B.type(torch.cuda.FloatTensor)))
+        # self.loss_G_L1_max = 10 * torch.mean(self.criterionL1(self.fake_B_dec_max.type(torch.cuda.FloatTensor),
+                                                              # self.real_B.type(torch.cuda.FloatTensor)))
+        # self.loss_G_L1_mean = 10 * torch.mean(self.criterionL1(self.fake_B_dec_mean.type(torch.cuda.FloatTensor),
+                                                               # self.real_B.type(torch.cuda.FloatTensor)))
         self.loss_G_L1_reg = 10 * torch.mean(self.criterionL1(self.fake_B_reg.type(torch.cuda.FloatTensor),
                                                               self.real_B.type(torch.cuda.FloatTensor)))
 
         # L1 loss at given points
-        self.loss_G_fake_real = 10 * torch.mean(self.criterionL1(self.fake_B_reg * self.mask_B_nc, self.real_B * self.mask_B_nc).type(torch.cuda.FloatTensor)) / mask_avg
-        self.loss_G_fake_hint = 10 * torch.mean(self.criterionL1(self.fake_B_reg * self.mask_B_nc, self.hint_B * self.mask_B_nc).type(torch.cuda.FloatTensor)) / mask_avg
-        self.loss_G_real_hint = 10 * torch.mean(self.criterionL1(self.real_B * self.mask_B_nc, self.hint_B * self.mask_B_nc).type(torch.cuda.FloatTensor)) / mask_avg
-
-        # self.loss_G_L1 = torch.mean(self.criterionL1(self.fake_B, self.real_B))
-        # self.loss_G_Huber = torch.mean(self.criterionHuber(self.fake_B, self.real_B))
-        # self.loss_G_fake_real = torch.mean(self.criterionHuber(self.fake_B*self.mask_B_nc, self.real_B*self.mask_B_nc)) / mask_avg
-        # self.loss_G_fake_hint = torch.mean(self.criterionHuber(self.fake_B*self.mask_B_nc, self.hint_B*self.mask_B_nc)) / mask_avg
-        # self.loss_G_real_hint = torch.mean(self.criterionHuber(self.real_B*self.mask_B_nc, self.hint_B*self.mask_B_nc)) / mask_avg
+        # self.loss_G_fake_real = 10 * torch.mean(self.criterionL1(self.fake_B_reg * self.mask_B_nc, self.real_B * self.mask_B_nc).type(torch.cuda.FloatTensor)) / mask_avg
+        # self.loss_G_fake_hint = 10 * torch.mean(self.criterionL1(self.fake_B_reg * self.mask_B_nc, self.hint_B * self.mask_B_nc).type(torch.cuda.FloatTensor)) / mask_avg
+        # self.loss_G_real_hint = 10 * torch.mean(self.criterionL1(self.real_B * self.mask_B_nc, self.hint_B * self.mask_B_nc).type(torch.cuda.FloatTensor)) / mask_avg
 
         if self.use_D:
             fake_AB = torch.cat((self.real_A, self.fake_B), 1)
             pred_fake = self.netD(fake_AB)
             self.loss_G_GAN = self.criterionGAN(pred_fake, True)
         else:
+            # lambda_A = 1.0
             self.loss_G = self.loss_G_CE * self.opt.lambda_A + self.loss_G_L1_reg
-            # self.loss_G = self.loss_G_Huber*self.opt.lambda_A
 
     def backward_G(self):
         self.compute_losses_G()
@@ -227,16 +201,16 @@ class Pix2PixModel(BaseModel):
         visual_ret['gray'] = util.lab2rgb(torch.cat((self.real_A.type(torch.cuda.FloatTensor), torch.zeros_like(self.real_B).type(torch.cuda.FloatTensor)), dim=1), self.opt)
         visual_ret['real'] = util.lab2rgb(torch.cat((self.real_A.type(torch.cuda.FloatTensor), self.real_B.type(torch.cuda.FloatTensor)), dim=1), self.opt)
 
-        visual_ret['fake_max'] = util.lab2rgb(torch.cat((self.real_A.type(torch.cuda.FloatTensor), self.fake_B_dec_max.type(torch.cuda.FloatTensor)), dim=1), self.opt)
-        visual_ret['fake_mean'] = util.lab2rgb(torch.cat((self.real_A.type(torch.cuda.FloatTensor), self.fake_B_dec_mean.type(torch.cuda.FloatTensor)), dim=1), self.opt)
+        # visual_ret['fake_max'] = util.lab2rgb(torch.cat((self.real_A.type(torch.cuda.FloatTensor), self.fake_B_dec_max.type(torch.cuda.FloatTensor)), dim=1), self.opt)
+        # visual_ret['fake_mean'] = util.lab2rgb(torch.cat((self.real_A.type(torch.cuda.FloatTensor), self.fake_B_dec_mean.type(torch.cuda.FloatTensor)), dim=1), self.opt)
         visual_ret['fake_reg'] = util.lab2rgb(torch.cat((self.real_A.type(torch.cuda.FloatTensor), self.fake_B_reg.type(torch.cuda.FloatTensor)), dim=1), self.opt)
 
         visual_ret['hint'] = util.lab2rgb(torch.cat((self.real_A.type(torch.cuda.FloatTensor), self.hint_B.type(torch.cuda.FloatTensor)), dim=1), self.opt)
 
         visual_ret['real_ab'] = util.lab2rgb(torch.cat((torch.zeros_like(self.real_A.type(torch.cuda.FloatTensor)), self.real_B.type(torch.cuda.FloatTensor)), dim=1), self.opt)
 
-        visual_ret['fake_ab_max'] = util.lab2rgb(torch.cat((torch.zeros_like(self.real_A.type(torch.cuda.FloatTensor)), self.fake_B_dec_max.type(torch.cuda.FloatTensor)), dim=1), self.opt)
-        visual_ret['fake_ab_mean'] = util.lab2rgb(torch.cat((torch.zeros_like(self.real_A.type(torch.cuda.FloatTensor)), self.fake_B_dec_mean.type(torch.cuda.FloatTensor)), dim=1), self.opt)
+        # visual_ret['fake_ab_max'] = util.lab2rgb(torch.cat((torch.zeros_like(self.real_A.type(torch.cuda.FloatTensor)), self.fake_B_dec_max.type(torch.cuda.FloatTensor)), dim=1), self.opt)
+        # visual_ret['fake_ab_mean'] = util.lab2rgb(torch.cat((torch.zeros_like(self.real_A.type(torch.cuda.FloatTensor)), self.fake_B_dec_mean.type(torch.cuda.FloatTensor)), dim=1), self.opt)
         visual_ret['fake_ab_reg'] = util.lab2rgb(torch.cat((torch.zeros_like(self.real_A.type(torch.cuda.FloatTensor)), self.fake_B_reg.type(torch.cuda.FloatTensor)), dim=1), self.opt)
 
         visual_ret['mask'] = self.mask_B_nc.expand(-1, 3, -1, -1).type(torch.cuda.FloatTensor)
@@ -246,7 +220,6 @@ class Pix2PixModel(BaseModel):
         # scale to [-1, 2], then clamped to [-1, 1]
         visual_ret['fake_entr'] = torch.clamp(3 * self.fake_B_entr.expand(-1, 3, -1, -1) / np.log(C) - 1, -1, 1)
 
-        # pdb.set_trace()
 
         return visual_ret
 
@@ -259,8 +232,5 @@ class Pix2PixModel(BaseModel):
                 # float(...) works for both scalar tensor and float number
                 self.avg_losses[name] = float(getattr(self, 'loss_' + name)) + self.avg_loss_alpha * self.avg_losses[name]
                 errors_ret[name] = (1 - self.avg_loss_alpha) / (1 - self.avg_loss_alpha**self.error_cnt) * self.avg_losses[name]
-
-        # errors_ret['|ab|_gt'] = float(torch.mean(torch.abs(self.real_B[:,1:,:,:])).cpu())
-        # errors_ret['|ab|_pr'] = float(torch.mean(torch.abs(self.fake_B[:,1:,:,:])).cpu())
 
         return errors_ret

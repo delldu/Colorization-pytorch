@@ -120,7 +120,7 @@ if __name__ == '__main__':
             visuals = util.get_subset_dict(model.get_current_visuals(), to_visualize)
 
             psnrs[i, pp] = util.calculate_psnr_np(util.tensor2im(visuals['real']), util.tensor2im(visuals['fake_reg']))
-            entrs[i, pp] = model.get_current_losses()['G_entr']
+            # entrs[i, pp] = model.get_current_losses()['G_entr']
 
             save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize)
 

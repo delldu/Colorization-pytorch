@@ -9,14 +9,16 @@
 # ***
 # ************************************************************************************/
 #
-import os
-import glob
 import argparse
+import glob
+import os
+
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
-from model import get_model, model_load, model_setenv
 from tqdm import tqdm
+
+from model import get_model, model_load, model_setenv
 
 if __name__ == "__main__":
     """Predict."""
@@ -24,7 +26,8 @@ if __name__ == "__main__":
     model_setenv()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--checkpoint', type=str, default="output/ImageColor.pth", help="checkpint file")
+    parser.add_argument('--checkpoint', type=str,
+                        default="output/ImageColor.pth", help="checkpint file")
     parser.add_argument('--input', type=str, required=True, help="input image")
     args = parser.parse_args()
 
@@ -43,7 +46,7 @@ if __name__ == "__main__":
     toimage = transforms.ToPILImage()
 
     image_filenames = glob.glob(args.input)
-    progress_bar = tqdm(total = len(image_filenames))
+    progress_bar = tqdm(total=len(image_filenames))
 
     for index, filename in enumerate(image_filenames):
         progress_bar.update(1)

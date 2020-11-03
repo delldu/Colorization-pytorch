@@ -1,8 +1,11 @@
 import os
-import torch
-from collections import OrderedDict
-from . import networks
 import pdb
+from collections import OrderedDict
+
+import torch
+
+from . import networks
+
 
 class BaseModel():
     # modify parser to add command line options,
@@ -18,7 +21,8 @@ class BaseModel():
         self.opt = opt
         self.gpu_ids = opt.gpu_ids
         self.isTrain = opt.isTrain
-        self.device = torch.device('cuda:{}'.format(self.gpu_ids[0])) if self.gpu_ids else torch.device('cpu')
+        self.device = torch.device('cuda:{}'.format(
+            self.gpu_ids[0])) if self.gpu_ids else torch.device('cpu')
         self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
         if opt.resize_or_crop != 'scale_width':
             torch.backends.cudnn.benchmark = True
@@ -36,7 +40,8 @@ class BaseModel():
     # load and print networks; create schedulers
     def setup(self, opt, parser=None):
         if self.isTrain:
-            self.schedulers = [networks.get_scheduler(optimizer, opt) for optimizer in self.optimizers]
+            self.schedulers = [networks.get_scheduler(
+                optimizer, opt) for optimizer in self.optimizers]
 
         if not self.isTrain or opt.load_model:
             self.load_networks(opt.which_epoch)
@@ -119,7 +124,8 @@ class BaseModel():
                (key == 'num_batches_tracked'):
                 state_dict.pop('.'.join(keys))
         else:
-            self.__patch_instance_norm_state_dict(state_dict, getattr(module, key), keys, i + 1)
+            self.__patch_instance_norm_state_dict(
+                state_dict, getattr(module, key), keys, i + 1)
 
     # load models from the disk
     def load_networks(self, which_epoch):
@@ -133,13 +139,16 @@ class BaseModel():
                 print('loading the model from %s' % load_path)
                 # if you are using PyTorch newer than 0.4 (e.g., built from
                 # GitHub source), you can remove str() on self.device
-                state_dict = torch.load(load_path, map_location=str(self.device))
+                state_dict = torch.load(
+                    load_path, map_location=str(self.device))
                 if hasattr(state_dict, '_metadata'):
                     del state_dict._metadata
 
                 # patch InstanceNorm checkpoints prior to 0.4
-                for key in list(state_dict.keys()):  # need to copy keys here because we mutate in loop
-                    self.__patch_instance_norm_state_dict(state_dict, net, key.split('.'))
+                # need to copy keys here because we mutate in loop
+                for key in list(state_dict.keys()):
+                    self.__patch_instance_norm_state_dict(
+                        state_dict, net, key.split('.'))
                 net.load_state_dict(state_dict)
 
     # print network information
@@ -153,7 +162,8 @@ class BaseModel():
                     num_params += param.numel()
                 if verbose:
                     print(net)
-                print('[Network %s] Total number of parameters : %.3f M' % (name, num_params / 1e6))
+                print('[Network %s] Total number of parameters : %.3f M' %
+                      (name, num_params / 1e6))
         print('-----------------------------------------------')
 
     # set requies_grad=Fasle to avoid computation
