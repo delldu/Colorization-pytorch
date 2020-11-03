@@ -79,7 +79,7 @@ def get_subset_dict(in_dict, keys):
 
     # pdb.set_trace()
     # (Pdb) pp subset.keys()
-    # odict_keys(['gray', 'hint', 'hint_ab', 'fake_entr', 'real', 'fake_reg', 'real_ab', 'fake_ab_reg'])
+    # odict_keys(['gray', 'hint', 'hint_ab', 'real', 'fake', 'real_ab', 'fake_ab'])
 
     return subset
 
@@ -384,73 +384,103 @@ def encode_ab_ind(data_ab, opt):
     #   data_q    Nx1xHxW \in [0,Q)
 
     # normalized bin number
+    # opt.ab_max = 110.0
+    # opt.ab_quant = 10.0
+    # opt.ab_norm = 110.0
+    # opt.A = 23
     data_ab_rs = torch.round((data_ab*opt.ab_norm + opt.ab_max)/opt.ab_quant)
     data_q = data_ab_rs[:, [0], :, :]*opt.A + data_ab_rs[:, [1], :, :]
     # pdb.set_trace()
     # (Pdb) pp data_ab_rs.size(), data_q.size()
     # (torch.Size([1, 2, 64, 64]), torch.Size([1, 1, 64, 64]))
+    # (Pdb) pp data_ab_rs
+    # tensor([[[[11., 11., 11.,  ..., 11., 11., 11.],
+    #           [11., 11., 11.,  ..., 11., 11., 11.],
+    #           [11., 11., 11.,  ..., 11., 11., 11.],
+    #           ...,
+    #           [11., 11., 11.,  ..., 11., 11., 11.],
+    #           [11., 11., 11.,  ..., 11., 11., 11.],
+    #           [11., 11., 11.,  ..., 11., 11., 11.]],
+
+    #          [[11., 11., 11.,  ..., 11., 11., 11.],
+    #           [11., 11., 11.,  ..., 11., 11., 11.],
+    #           [10., 11., 11.,  ..., 11., 11., 11.],
+    #           ...,
+    #           [12., 12., 12.,  ..., 12., 12., 12.],
+    #           [12., 12., 12.,  ..., 12., 12., 12.],
+    #           [12., 12., 12.,  ..., 12., 12., 12.]]]], device='cuda:0')
+    # (Pdb) pp data_ab_rs.size()
+    # torch.Size([1, 2, 64, 64])
+    # (Pdb) pp data_q
+    # tensor([[[[264., 264., 264.,  ..., 264., 264., 264.],
+    #           [264., 264., 264.,  ..., 264., 264., 264.],
+    #           [263., 264., 264.,  ..., 264., 264., 264.],
+    #           ...,
+    #           [265., 265., 265.,  ..., 265., 265., 265.],
+    #           [265., 265., 265.,  ..., 265., 265., 265.],
+    #           [265., 265., 265.,  ..., 265., 265., 265.]]]], device='cuda:0')
 
     return data_q
 
 
-def decode_ind_ab(data_q, opt):
-    # Decode index into ab value
-    # INPUTS
-    #   data_q      Nx1xHxW \in [0,Q)
-    # OUTPUTS
-    #   data_ab     Nx2xHxW \in [-1,1]
+# def decode_ind_ab(data_q, opt):
+#     # Decode index into ab value
+#     # INPUTS
+#     #   data_q      Nx1xHxW \in [0,Q)
+#     # OUTPUTS
+#     #   data_ab     Nx2xHxW \in [-1,1]
 
-    data_a = data_q/opt.A
-    data_b = data_q - data_a*opt.A
-    data_ab = torch.cat((data_a, data_b), dim=1)
+#     data_a = data_q/opt.A
+#     data_b = data_q - data_a*opt.A
+#     data_ab = torch.cat((data_a, data_b), dim=1)
 
-    if(data_q.is_cuda):
-        type_out = torch.cuda.FloatTensor
-    else:
-        type_out = torch.FloatTensor
-    data_ab = ((data_ab.type(type_out)*opt.ab_quant) - opt.ab_max)/opt.ab_norm
+#     if(data_q.is_cuda):
+#         type_out = torch.cuda.FloatTensor
+#     else:
+#         type_out = torch.FloatTensor
+#     data_ab = ((data_ab.type(type_out)*opt.ab_quant) - opt.ab_max)/opt.ab_norm
 
-    # pdb.set_trace()
-    return data_ab
-
-
-def decode_max_ab(data_ab_quant, opt):
-    # Decode probability distribution by using bin with highest probability
-    # INPUTS
-    #   data_ab_quant   NxQxHxW \in [0,1]
-    # OUTPUTS
-    #   data_ab         Nx2xHxW \in [-1,1]
-
-    data_q = torch.argmax(data_ab_quant, dim=1)[:, None, :, :]
-    # pdb.set_trace(), what ???
-
-    return decode_ind_ab(data_q, opt)
+#     # pdb.set_trace()
+#     return data_ab
 
 
-def decode_mean(data_ab_quant, opt):
-    # Decode probability distribution by taking mean over all bins
-    # INPUTS
-    #   data_ab_quant   NxQxHxW \in [0,1]
-    # OUTPUTS
-    #   data_ab_inf     Nx2xHxW \in [-1,1]
+# def decode_max_ab(data_ab_quant, opt):
+#     # Decode probability distribution by using bin with highest probability
+#     # INPUTS
+#     #   data_ab_quant   NxQxHxW \in [0,1]
+#     # OUTPUTS
+#     #   data_ab         Nx2xHxW \in [-1,1]
 
-    (N, Q, H, W) = data_ab_quant.shape
-    a_range = torch.range(-opt.ab_max, opt.ab_max,
-                          step=opt.ab_quant).to(data_ab_quant.device)[None, :, None, None]
-    a_range = a_range.type(data_ab_quant.type())
+#     data_q = torch.argmax(data_ab_quant, dim=1)[:, None, :, :]
+#     # pdb.set_trace(), what ???
 
-    # reshape to AB space
-    data_ab_quant = data_ab_quant.view((N, int(opt.A), int(opt.A), H, W))
-    data_a_total = torch.sum(data_ab_quant, dim=2)
-    data_b_total = torch.sum(data_ab_quant, dim=1)
+#     return decode_ind_ab(data_q, opt)
 
-    # matrix multiply
-    data_a_inf = torch.sum(data_a_total * a_range, dim=1, keepdim=True)
-    data_b_inf = torch.sum(data_b_total * a_range, dim=1, keepdim=True)
 
-    data_ab_inf = torch.cat((data_a_inf, data_b_inf), dim=1)/opt.ab_norm
+# def decode_mean(data_ab_quant, opt):
+#     # Decode probability distribution by taking mean over all bins
+#     # INPUTS
+#     #   data_ab_quant   NxQxHxW \in [0,1]
+#     # OUTPUTS
+#     #   data_ab_inf     Nx2xHxW \in [-1,1]
 
-    return data_ab_inf
+#     (N, Q, H, W) = data_ab_quant.shape
+#     a_range = torch.range(-opt.ab_max, opt.ab_max,
+#                           step=opt.ab_quant).to(data_ab_quant.device)[None, :, None, None]
+#     a_range = a_range.type(data_ab_quant.type())
+
+#     # reshape to AB space
+#     data_ab_quant = data_ab_quant.view((N, int(opt.A), int(opt.A), H, W))
+#     data_a_total = torch.sum(data_ab_quant, dim=2)
+#     data_b_total = torch.sum(data_ab_quant, dim=1)
+
+#     # matrix multiply
+#     data_a_inf = torch.sum(data_a_total * a_range, dim=1, keepdim=True)
+#     data_b_inf = torch.sum(data_b_total * a_range, dim=1, keepdim=True)
+
+#     data_ab_inf = torch.cat((data_a_inf, data_b_inf), dim=1)/opt.ab_norm
+
+#     return data_ab_inf
 
 
 def calculate_psnr_np(img1, img2):

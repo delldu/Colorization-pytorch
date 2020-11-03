@@ -20,6 +20,12 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256):
         im = util.tensor2im(im_data)
         image_name = '%s_%s.png' % (name, label)
         # pdb.set_trace()
+        # aspect_ratio = 1.0
+        # (Pdb) pp visuals.keys()
+        # odict_keys(['gray', 'hint', 'hint_ab', 'real', 
+        # 'fake', 'real_ab', 'fake_ab'])
+        # (Pdb) pp name, label
+        # ('00000000_1p000', 'gray')
 
         save_path = os.path.join(image_dir, image_name)
         h, w, _ = im.shape

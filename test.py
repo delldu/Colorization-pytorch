@@ -22,7 +22,8 @@ if __name__ == '__main__':
     # sample_ps = [1., .125, .03125]
     sample_ps = [1., .050, 0.020]
 
-    to_visualize = ['gray', 'hint', 'hint_ab', 'fake_entr', 'real', 'fake_reg', 'real_ab', 'fake_ab_reg', ]
+    to_visualize = ['gray', 'hint', 'hint_ab', 'real', 'fake', 'real_ab', 'fake_ab', ]
+
     S = len(sample_ps)
 
     opt = TrainOptions().parse()
@@ -119,8 +120,7 @@ if __name__ == '__main__':
             model.test(True)  # True means that losses will be computed
             visuals = util.get_subset_dict(model.get_current_visuals(), to_visualize)
 
-            psnrs[i, pp] = util.calculate_psnr_np(util.tensor2im(visuals['real']), util.tensor2im(visuals['fake_reg']))
-            # entrs[i, pp] = model.get_current_losses()['G_entr']
+            psnrs[i, pp] = util.calculate_psnr_np(util.tensor2im(visuals['real']), util.tensor2im(visuals['fake']))
 
             save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize)
 

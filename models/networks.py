@@ -10,7 +10,6 @@ from torch.optim import lr_scheduler
 # Helper Functions
 ###############################################################################
 
-
 def get_norm_layer(norm_type='instance'):
     # pdb.set_trace() 'batch'    
     if norm_type == 'batch':
@@ -135,26 +134,6 @@ def define_D(input_nc, ndf, which_model_netD,
         raise NotImplementedError('Discriminator model name [%s] is not recognized' %
                                   which_model_netD)
     return init_net(netD, init_type, gpu_ids)
-
-
-##############################################################################
-# Classes
-##############################################################################
-# class HuberLoss(nn.Module):
-#     def __init__(self, delta=.01):
-#         super(HuberLoss, self).__init__()
-#         self.delta = delta
-
-#     def __call__(self, in0, in1):
-#         mask = torch.zeros_like(in0)
-#         mann = torch.abs(in0 - in1)
-#         eucl = .5 * (mann**2)
-#         mask[...] = mann < self.delta
-
-#         # loss = eucl*mask + self.delta*(mann-.5*self.delta)*(1-mask)
-#         loss = eucl * mask / self.delta + (mann - .5 * self.delta) * (1 - mask)
-#         return torch.sum(loss, dim=1, keepdim=True)
-
 
 class L1Loss(nn.Module):
     def __init__(self):
