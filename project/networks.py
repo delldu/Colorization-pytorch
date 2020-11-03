@@ -6,12 +6,15 @@ import torch.nn as nn
 from torch.nn import init
 from torch.optim import lr_scheduler
 
-###############################################################################
-# Helper Functions
-###############################################################################
+#######################################################################################
+# 
+# Thew following comes from https://github.com/richzhang/colorization-pytorch.git
+# 
+# Thanks a lot. 
+#
+#######################################################################################
 
 def get_norm_layer(norm_type='instance'):
-    # pdb.set_trace() 'batch'    
     if norm_type == 'batch':
         norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
     elif norm_type == 'instance':
@@ -63,12 +66,10 @@ def init_weights(net, init_type='xavier', gain=0.02):
             init.normal_(m.weight.data, 1.0, gain)
             init.constant_(m.bias.data, 0.0)
 
-    print('initialize network with %s' % init_type)
     net.apply(init_func)
 
 
 def init_net(net, init_type='xavier', gpu_ids=[]):
-    # pdb.set_trace()
     if len(gpu_ids) > 0:
         assert(torch.cuda.is_available())
         net.to(gpu_ids[0])

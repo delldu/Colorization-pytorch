@@ -21,23 +21,18 @@ class Pix2PixModel(BaseModel):
     def initialize(self, opt):
         BaseModel.initialize(self, opt)
         self.isTrain = opt.isTrain
-        self.half = opt.half
 
         self.use_D = self.opt.lambda_GAN > 0
-
         if(self.use_D):
             self.loss_names = ['G_GAN', ]
         else:
             self.loss_names = []
 
-        self.loss_names += ['G_CE', 'G_entr', 'G_entr_hint', ]
-        self.loss_names += ['G_L1_max', 'G_L1_mean', 'G_entr', 'G_L1_reg', ]
-        self.loss_names += ['G_fake_real', 'G_fake_hint', 'G_real_hint', ]
-        self.loss_names += ['0', ]
-
-        # specify the images you want to save/display. The program will call base_model.get_current_visuals
+        self.loss_names += ['G_CE', ]
+        self.loss_names += ['G_L1', ]
+        self.loss_names += ['G_fake_real',]
+        # self.loss_names += ['0', ]
         self.visual_names = ['real_A', 'fake_B', 'real_B']
-        # specify the models you want to save to the disk. The program will call base_model.save_networks and base_model.load_networks
 
         if self.isTrain:
             if(self.use_D):
@@ -48,17 +43,34 @@ class Pix2PixModel(BaseModel):
             self.model_names = ['G']
 
         # load/define networks
+        # which_model_netG = 'siggraph'
+        # (Pdb) a
+        # input_nc = 4
+        # output_nc = 2
+        # ngf = 64
+        # norm = 'batch'
+        # use_dropout = True
+        # init_type = 'normal'
+        # gpu_ids = [0]
+        # use_tanh = True
+        # (Pdb) pp norm_layer
+        # functools.partial(<class 'torch.nn.modules.batchnorm.BatchNorm2d'>, affine=True)
+
         num_in = opt.input_nc + opt.output_nc + 1
         self.netG = networks.define_G(num_in, opt.output_nc, opt.ngf,
-                                      opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids,
+                                      opt.which_model_netG, opt.norm, 
+                                      not opt.no_dropout, opt.init_type,
+                                      self.gpu_ids,
                                       use_tanh=True)
 
         if self.isTrain:
-            use_sigmoid = opt.no_lsgan
+            use_sigmoid = True
+            # opt.no_lsgan
             if self.use_D:
                 self.netD = networks.define_D(opt.input_nc + opt.output_nc, opt.ndf,
                                               opt.which_model_netD,
-                                              opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
+                                              opt.n_layers_D, opt.norm, use_sigmoid,
+                                              opt.init_type, self.gpu_ids)
 
         if self.isTrain:
             self.fake_AB_pool = ImagePool(opt.pool_size)

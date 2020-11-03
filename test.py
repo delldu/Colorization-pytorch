@@ -20,7 +20,7 @@ import pdb
 
 if __name__ == '__main__':
     # sample_ps = [1., .125, .03125]
-    sample_ps = [1., .050, 0.020]
+    sample_ps = [1., .050, 0.100]
 
     to_visualize = ['gray', 'hint', 'hint_ab', 'real', 'fake', 'real_ab', 'fake_ab', ]
 

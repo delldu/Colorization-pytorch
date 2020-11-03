@@ -11,7 +11,7 @@
 #
 
 import os
-
+import random
 import torch
 import torch.utils.data as data
 import torchvision.transforms as T
@@ -22,6 +22,7 @@ train_dataset_rootdir = "dataset/train/"
 test_dataset_rootdir = "dataset/test/"
 
 # Color space Lab
+
 
 def rgb2xyz(rgb):  # rgb from [0,1]
     # [0.412453, 0.357580, 0.180423],
@@ -139,6 +140,60 @@ def lab2rgb(lab_rs, opt):
     return out
 
 
+def color_sample(data, p=.01):
+    N, C, H, W = data['B'].shape
+
+    data['hint_B'] = torch.zeros_like(data['B'])
+    data['mask_B'] = torch.zeros_like(data['A'])
+    total = int(H * W * p * p)
+
+    for nn in range(N):
+        count = 0
+        while(count < total):
+            P = np.random.choice([3, 4, 5, 6])  # patch size
+            # uniform distribution
+            h = random.randint(0, H-P+1)
+            w = random.randint(0, W-P+1)
+
+            data['hint'][nn, :, h:h+P, w:w+P] = torch.mean(torch.mean(
+                data['B'][nn, :, h:h+P, w:w+P], dim=2, keepdim=True), dim=1, keepdim=True).view(1, C, 1, 1)
+
+            data['mask'][nn, :, h:h+P, w:w+P] = 1
+            count += 1
+
+    data['mask'] -= 0.5
+
+    return data
+
+class ImagePool():
+    def __init__(self, pool_size):
+        self.pool_size = pool_size
+        if self.pool_size > 0:
+            self.num_imgs = 0
+            self.images = []
+
+    def query(self, images):
+        if self.pool_size == 0:
+            return images
+        return_images = []
+        for image in images:
+            image = torch.unsqueeze(image.data, 0)
+            if self.num_imgs < self.pool_size:
+                self.num_imgs = self.num_imgs + 1
+                self.images.append(image)
+                return_images.append(image)
+            else:
+                p = random.uniform(0, 1)
+                if p > 0.5:
+                    random_id = random.randint(0, self.pool_size - 1)  # randint is inclusive
+                    tmp = self.images[random_id].clone()
+                    self.images[random_id] = image
+                    return_images.append(tmp)
+                else:
+                    return_images.append(image)
+        return_images = torch.cat(return_images, 0)
+        return return_images
+
 def get_transform(train=True):
     """Transform images."""
     ts = []
@@ -160,7 +215,6 @@ class ImageColorDataset(data.Dataset):
         self.transforms = transforms
 
         # load all images, sorting for alignment
-        # xxxx--modify here
         self.images = list(sorted(os.listdir(root)))
 
     def __getitem__(self, idx):
@@ -170,8 +224,12 @@ class ImageColorDataset(data.Dataset):
 
         if self.transforms is not None:
             img = self.transforms(img)
+        data = {}
+        data_lab = rgb2lab(img)
+        data['A'] = data_lab[:, [0, ], :, :]
+        data['B'] = data_lab[:, 1:, :, :]
 
-        return img
+        return data
 
     def __len__(self):
         """Return total numbers of images."""
@@ -197,8 +255,6 @@ def train_data(bs):
         train_dataset_rootdir, get_transform(train=True))
     print(train_ds)
 
-    # Split train_ds in train and valid set
-    # xxxx--modify here
     valid_len = int(0.2 * len(train_ds))
     indices = [i for i in range(len(train_ds) - valid_len, len(train_ds))]
 

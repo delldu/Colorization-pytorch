@@ -18,13 +18,66 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
+from networks import define_G, define_D, GANLoss, L1Loss
+from data import ImagePool
 
 class ImageColorModel(nn.Module):
     """ImageColor Model."""
 
-    def __init__(self):
+    def __init__(self, isTrain):
         """Init model."""
         super(ImageColorModel, self).__init__()
+
+        self.isTrain = isTrain
+
+        # load/define networks
+        # L + ab + mask
+        input_nc = 1
+        output_nc = 2
+        num_in = input_nc + output_nc + 1
+        ngf = 64
+        which_model_netG = "siggraph"
+        norm = 'batch'
+        use_dropout = True
+        init_type = 'normal'
+        gpu_ids = [0]
+        self.netG = define_G(num_in, output_nc, ngf,
+                                      which_model_netG, norm, 
+                                      use_dropout, init_type,
+                                      gpu_ids,
+                                      use_tanh=True)
+
+        if self.isTrain:
+            use_sigmoid = True
+            ndf = 64
+            which_model_netD = 'basic'
+            n_layers_D = 3
+            self.netD = define_D(input_nc + output_nc, ndf,
+                                              which_model_netD,
+                                              n_layers_D, norm, use_sigmoid,
+                                              init_type, gpu_ids)
+
+        if self.isTrain:
+            self.fake_AB_pool = ImagePool(64)
+            self.criterionGAN = GANLoss(use_lsgan=False).to(os.environ["DEVICE"])
+            self.criterionL1 = L1Loss()
+
+            self.criterionCE = torch.nn.CrossEntropyLoss()
+
+            # initialize optimizers
+            lr = 0.0001
+            beta = 0.9
+            self.optimizers = []
+            self.optimizer_G = torch.optim.Adam(self.netG.parameters(),
+                                                lr=lr, betas=(beta, 0.999))
+            self.optimizers.append(self.optimizer_G)
+
+            self.use_D = True
+            if self.use_D:
+                self.optimizer_D = torch.optim.Adam(self.netD.parameters(),
+                                                    lr=lr, betas=(beta, 0.999))
+                self.optimizers.append(self.optimizer_D)
+
 
     def forward(self, x):
         """Forward."""
@@ -248,29 +301,23 @@ def model_setenv():
 
 def infer_perform():
     """Model infer performance ..."""
-
     model_setenv()
     device = os.environ["DEVICE"]
 
-    model = ImageColorModel()
+    model = ImageColorModel(isTrain = True)
     model.eval()
     model = model.to(device)
 
-    with tqdm(total=len(1000)) as t:
-        t.set_description(tag)
+    print(model)
 
-        # xxxx--modify here
-        input = torch.randn(64, 3, 512, 512)
-        input = input.to(device)
-
-        with torch.no_grad():
-            output = model(input)
-
-        t.update(1)
-
+    # for i in tqdm(range(100)):
+    #     input = torch.randn(64, 3, 1024, 1024)
+    #     input = input.to(device)
+    #     with torch.no_grad():
+    #         output = model(input)
 
 if __name__ == '__main__':
     """Test model ..."""
 
-    model_export()
+    # model_export()
     infer_perform()
