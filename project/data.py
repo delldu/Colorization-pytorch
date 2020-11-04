@@ -139,8 +139,10 @@ def lab2rgb(lab_rs):
     out = xyz2rgb(lab2xyz(lab))
     return out
 
+
 def Lab2rgb(L, ab):
     return lab2rgb(torch.cat((L, ab), dim=1))
+
 
 def color_sample(data, p=.01):
     N, C, H, W = data['B'].shape
@@ -148,7 +150,7 @@ def color_sample(data, p=.01):
     data['hint'] = torch.zeros_like(data['B'])
     data['mask'] = torch.zeros_like(data['A'])
     total = int(H * W * p * p)
-    
+
     if (total > 0):
         for nn in range(N):
             count = 0
@@ -167,6 +169,17 @@ def color_sample(data, p=.01):
     data['mask'] -= 0.5
 
     return data
+
+
+def multiple_crop(data, mult=8, HWmax=[4096, 4096]):
+    # crop image to a multiple
+    H, W = data.shape[2:]
+    Hnew = min(int(H/mult)*mult, HWmax[0])
+    Wnew = min(int(W/mult)*mult, HWmax[1])
+    h = (H-Hnew)//2
+    w = (W-Wnew)//2
+    return data[:, :, h:h+Hnew, w:w+Wnew]
+
 
 class ImagePool():
     def __init__(self, pool_size):
@@ -188,7 +201,8 @@ class ImagePool():
             else:
                 p = random.uniform(0, 1)
                 if p > 0.5:
-                    random_id = random.randint(0, self.pool_size - 1)  # randint is inclusive
+                    random_id = random.randint(
+                        0, self.pool_size - 1)  # randint is inclusive
                     tmp = self.images[random_id].clone()
                     self.images[random_id] = image
                     return_images.append(tmp)
@@ -196,6 +210,7 @@ class ImagePool():
                     return_images.append(image)
         return_images = torch.cat(return_images, 0)
         return return_images
+
 
 def get_transform(train=True):
     """Transform images."""

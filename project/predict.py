@@ -18,7 +18,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 from tqdm import tqdm
 
-from data import rgb2lab, Lab2rgb, color_sample
+from data import rgb2lab, Lab2rgb, color_sample, multiple_crop
 from model import get_model, model_load, model_setenv
 
 import pdb
@@ -31,7 +31,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint', type=str,
                         default="output/ImageColor_G.pth", help="checkpint file")
-    parser.add_argument('--input', type=str, default="dataset/test/*.png", help="input image")
+    parser.add_argument('--input', type=str,
+                        default="dataset/test/*.png", help="input image")
     args = parser.parse_args()
 
     # CPU or GPU ?
@@ -57,20 +58,28 @@ if __name__ == "__main__":
 
         image = Image.open(filename).convert("RGB")
         input_tensor = totensor(image).unsqueeze(0).to(device)
+        H, W = input_tensor.shape[2:]
+        if (H % 8 != 0 or W % 8 != 0):
+            input_tensor = multiple_crop(input_tensor)
 
         data = {}
         data_lab = rgb2lab(input_tensor)
         data['A'] = data_lab[:, [0, ], :, :]
         data['B'] = data_lab[:, 1:, :, :]
-        color_sample(data, p=0.005)
+        color_sample(data, p=0.01)
         del input_tensor
+
+        # Sample
+        output_tensor = Lab2rgb(
+            data['A'], data['hint']).clamp(0, 1.0).squeeze()
+        toimage(output_tensor.cpu()).save(
+            "output/sample_{}".format(os.path.basename(filename)))
 
         with torch.no_grad():
             (fake_class, fake) = model(data['A'], data['hint'], data['mask'])
 
         output_tensor = Lab2rgb(data['A'], fake).clamp(0, 1.0).squeeze()
-
-        # toimage(output_tensor.cpu()).show()
-        toimage(output_tensor.cpu()).save("output/color_{}".format(os.path.basename(filename)))
+        toimage(output_tensor.cpu()).save(
+            "output/color_{}".format(os.path.basename(filename)))
 
         del data, fake_class, fake, output_tensor
