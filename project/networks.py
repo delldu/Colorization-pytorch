@@ -70,11 +70,11 @@ def init_weights(net, init_type='xavier', gain=0.02):
 
 
 def init_net(net, init_type='xavier', gpu_ids=[]):
-    if len(gpu_ids) > 0:
-        assert(torch.cuda.is_available())
-        net.to(gpu_ids[0])
-        # (Pdb) pp gpu_ids[0] => 0
-        net = torch.nn.DataParallel(net, gpu_ids)
+    # if len(gpu_ids) > 0:
+    #     assert(torch.cuda.is_available())
+    #     net.to(gpu_ids[0])
+    #     # (Pdb) pp gpu_ids[0] => 0
+    #     net = torch.nn.DataParallel(net, gpu_ids)
     init_weights(net, init_type)
     return net
 
@@ -141,7 +141,6 @@ class L1Loss(nn.Module):
         super(L1Loss, self).__init__()
 
     def __call__(self, in0, in1):
-        # pdb.set_trace() ==> true
         return torch.sum(torch.abs(in0 - in1), dim=1, keepdim=True)
 
 

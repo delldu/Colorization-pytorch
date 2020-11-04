@@ -19,16 +19,18 @@ import torch.nn as nn
 from tqdm import tqdm
 
 from networks import define_G, define_D, GANLoss, L1Loss
-from data import ImagePool
+from data import ImagePool, rgb2lab, lab2rgb, color_sample
+
+import pdb
 
 class ImageColorModel(nn.Module):
     """ImageColor Model."""
 
-    def __init__(self, isTrain):
+    def __init__(self, trainning):
         """Init model."""
         super(ImageColorModel, self).__init__()
 
-        self.isTrain = isTrain
+        self.trainning = trainning
 
         # load/define networks
         # L + ab + mask
@@ -47,7 +49,7 @@ class ImageColorModel(nn.Module):
                                       gpu_ids,
                                       use_tanh=True)
 
-        if self.isTrain:
+        if self.trainning:
             use_sigmoid = True
             ndf = 64
             which_model_netD = 'basic'
@@ -57,7 +59,7 @@ class ImageColorModel(nn.Module):
                                               n_layers_D, norm, use_sigmoid,
                                               init_type, gpu_ids)
 
-        if self.isTrain:
+        if self.trainning:
             self.fake_AB_pool = ImagePool(64)
             self.criterionGAN = GANLoss(use_lsgan=False).to(os.environ["DEVICE"])
             self.criterionL1 = L1Loss()
@@ -89,6 +91,9 @@ def model_load(model, path):
     if not os.path.exists(path):
         print("Model '{}' does not exist.".format(path))
         return
+
+    if isinstance(model, torch.nn.DataParallel):
+        model = model.module
 
     state_dict = torch.load(path, map_location=lambda storage, loc: storage)
     target_state_dict = model.state_dict()
@@ -149,9 +154,9 @@ def model_export():
     # python -c "import netron; netron.start('model.onnx')"
 
 
-def get_model():
+def get_model(trainning=True):
     """Create model."""
-    model = ImageColorModel()
+    model = ImageColorModel(trainning)
     return model
 
 
@@ -235,18 +240,25 @@ def valid_epoch(loader, model, device, tag=''):
         t.set_description(tag)
 
         for data in loader:
-            images, targets = data
+            images = data
             count = len(images)
 
             # Transform data to device
             images = images.to(device)
-            targets = targets.to(device)
+
+            data = {}
+            data_lab = rgb2lab(images)
+            data['A'] = data_lab[:, [0, ], :, :]
+            data['B'] = data_lab[:, 1:, :, :]
+            color_sample(data, p = 0.05)
 
             # Predict results without calculating gradients
+            # self.netG(self.real_A, self.hint, self.mask)
             with torch.no_grad():
-                predicts = model(images)
+                (fake_class, fake) = model(data['A'], data['hint'], data['mask'])
 
             # xxxx--modify here
+            loss_value = 0.0001
             valid_loss.update(loss_value, count)
             t.set_postfix(loss='{:.6f}'.format(valid_loss.avg))
             t.update(count)
@@ -304,17 +316,18 @@ def infer_perform():
     model_setenv()
     device = os.environ["DEVICE"]
 
-    model = ImageColorModel(isTrain = True)
+    model = get_model(trainning = False).netG
     model.eval()
     model = model.to(device)
 
     print(model)
 
-    # for i in tqdm(range(100)):
-    #     input = torch.randn(64, 3, 1024, 1024)
-    #     input = input.to(device)
-    #     with torch.no_grad():
-    #         output = model(input)
+    for i in tqdm(range(100)):
+        input = torch.randn(8, 4, 512, 512)
+        input = input.to(device)
+
+        with torch.no_grad():
+            output = model(input[:, 0:1, :, :], input[:, 1:3, :, :], input[:, 3:4, :, :])
 
 if __name__ == '__main__':
     """Test model ..."""

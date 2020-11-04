@@ -14,7 +14,7 @@ import os
 
 import torch
 
-from data import get_data
+from data import get_data, rgb2lab, lab2rgb
 from model import get_model, model_load, model_setenv, valid_epoch
 
 if __name__ == "__main__":
@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint', type=str,
-                        default="output/ImageColor.pth", help="checkpoint file")
+                        default="output/ImageColor_G.pth", help="checkpoint file")
     parser.add_argument('--bs', type=int, default=2, help="batch size")
     args = parser.parse_args()
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     device = torch.device(os.environ["DEVICE"])
 
     # get model
-    model = get_model()
+    model = get_model(trainning=False).netG
     model_load(model, args.checkpoint)
     model.to(device)
 

@@ -18,6 +18,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 from tqdm import tqdm
 
+from data import rgb2lab, lab2rgb
 from model import get_model, model_load, model_setenv
 
 if __name__ == "__main__":
@@ -27,14 +28,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint', type=str,
-                        default="output/ImageColor.pth", help="checkpint file")
+                        default="output/ImageColor_G.pth", help="checkpint file")
     parser.add_argument('--input', type=str, required=True, help="input image")
     args = parser.parse_args()
 
     # CPU or GPU ?
     device = torch.device(os.environ["DEVICE"])
 
-    model = get_model()
+    model = get_model(trainning=False).netG
     model_load(model, args.checkpoint)
     model.to(device)
     model.eval()

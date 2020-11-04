@@ -121,7 +121,7 @@ def lab2xyz(lab):
     return out
 
 
-def rgb2lab(rgb, opt):
+def rgb2lab(rgb):
     lab = xyz2lab(rgb2xyz(rgb))
 
     l_rs = (lab[:, [0], :, :] - 50.0)/100.0
@@ -131,7 +131,7 @@ def rgb2lab(rgb, opt):
     return out
 
 
-def lab2rgb(lab_rs, opt):
+def lab2rgb(lab_rs):
     l = lab_rs[:, [0], :, :] * 100.0 + 50.0
     ab = lab_rs[:, 1:, :, :] * 110.0
     lab = torch.cat((l, ab), dim=1)
@@ -143,14 +143,14 @@ def lab2rgb(lab_rs, opt):
 def color_sample(data, p=.01):
     N, C, H, W = data['B'].shape
 
-    data['hint_B'] = torch.zeros_like(data['B'])
-    data['mask_B'] = torch.zeros_like(data['A'])
+    data['hint'] = torch.zeros_like(data['B'])
+    data['mask'] = torch.zeros_like(data['A'])
     total = int(H * W * p * p)
 
     for nn in range(N):
         count = 0
         while(count < total):
-            P = np.random.choice([3, 4, 5, 6])  # patch size
+            P = random.choice([3, 4, 5, 6])  # patch size
             # uniform distribution
             h = random.randint(0, H-P+1)
             w = random.randint(0, W-P+1)
@@ -197,9 +197,11 @@ class ImagePool():
 def get_transform(train=True):
     """Transform images."""
     ts = []
-    # if train:
-    #     ts.append(T.RandomHorizontalFlip(0.5))
-
+    if train:
+        # ts.append(T.RandomHorizontalFlip(0.5))
+        ts.append(T.RandomResizedCrop((512, 512), interpolation=2))
+    else:
+        ts.append(T.Resize((512, 512), interpolation=2))
     ts.append(T.ToTensor())
     return T.Compose(ts)
 
@@ -224,12 +226,8 @@ class ImageColorDataset(data.Dataset):
 
         if self.transforms is not None:
             img = self.transforms(img)
-        data = {}
-        data_lab = rgb2lab(img)
-        data['A'] = data_lab[:, [0, ], :, :]
-        data['B'] = data_lab[:, 1:, :, :]
 
-        return data
+        return img
 
     def __len__(self):
         """Return total numbers of images."""

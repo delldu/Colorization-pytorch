@@ -6,6 +6,7 @@ import torch
 
 from . import networks
 
+import pdb
 
 class BaseModel():
     # modify parser to add command line options,
@@ -129,14 +130,22 @@ class BaseModel():
 
     # load models from the disk
     def load_networks(self, which_epoch):
+        # pdb.set_trace()
+        # (Pdb) pp which_epoch
+        # 'latest'
+        # (Pdb) pp  self.model_names
+        # ['G']
         for name in self.model_names:
             if isinstance(name, str):
                 load_filename = '%s_net_%s.pth' % (which_epoch, name)
                 load_path = os.path.join(self.save_dir, load_filename)
                 net = getattr(self, 'net' + name)
+                pdb.set_trace()
+
                 if isinstance(net, torch.nn.DataParallel):
                     net = net.module
                 print('loading the model from %s' % load_path)
+
                 # if you are using PyTorch newer than 0.4 (e.g., built from
                 # GitHub source), you can remove str() on self.device
                 state_dict = torch.load(
@@ -144,11 +153,14 @@ class BaseModel():
                 if hasattr(state_dict, '_metadata'):
                     del state_dict._metadata
 
+                pdb.set_trace()
                 # patch InstanceNorm checkpoints prior to 0.4
                 # need to copy keys here because we mutate in loop
                 for key in list(state_dict.keys()):
                     self.__patch_instance_norm_state_dict(
                         state_dict, net, key.split('.'))
+
+                pdb.set_trace()
                 net.load_state_dict(state_dict)
 
     # print network information
