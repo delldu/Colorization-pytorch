@@ -25,20 +25,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint', type=str,
                         default="output/ImageColor_G.pth", help="checkpoint file")
-    parser.add_argument('--bs', type=int, default=2, help="batch size")
+    parser.add_argument('--bs', type=int, default=32, help="batch size")
     args = parser.parse_args()
 
     # CPU or GPU ?
     device = torch.device(os.environ["DEVICE"])
 
     # get model
-    model = get_model(trainning=False).netG
-    model_load(model, args.checkpoint)
-    model.to(device)
+    model = get_model(trainning=False)
+    model_load(model.net_G, args.checkpoint)
+    model.net_G.to(device)
 
     if os.environ["ENABLE_APEX"] == "YES":
         from apex import amp
-        model = amp.initialize(model, opt_level="O1")
+        model.net_G = amp.initialize(model.net_G, opt_level="O1")
 
     print("Start testing ...")
     test_dl = get_data(trainning=False, bs=args.bs)

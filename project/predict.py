@@ -38,7 +38,7 @@ if __name__ == "__main__":
     # CPU or GPU ?
     device = torch.device(os.environ["DEVICE"])
 
-    model = get_model(trainning=False).netG
+    model = get_model(trainning=False).net_G
     model_load(model, args.checkpoint)
     model.to(device)
     model.eval()

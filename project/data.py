@@ -143,6 +143,17 @@ def lab2rgb(lab_rs):
 def Lab2rgb(L, ab):
     return lab2rgb(torch.cat((L, ab), dim=1))
 
+def ab2index(ab):
+    # Encode ab into index with quant
+    # Input: ab -- Nx2xHxW in [-1,1]
+    # Output: q -- Nx1xHxW in [0,Q)
+    ab_max = 110.0
+    ab_quant = 10.0
+    ab_norm = 110.0
+    A = 2 * ab_max / ab_quant + 1
+    ab_rs = torch.round((ab * ab_norm + ab_max)/ab_quant)
+    q = ab_rs[:, [0], :, :] * A + ab_rs[:, [1], :, :]
+    return q
 
 def color_sample(data, p=.01):
     N, C, H, W = data['B'].shape
@@ -214,12 +225,13 @@ class ImagePool():
 
 def get_transform(train=True):
     """Transform images."""
+    PATH_SIZE=(256, 256)
     ts = []
     if train:
         # ts.append(T.RandomHorizontalFlip(0.5))
-        ts.append(T.RandomResizedCrop((512, 512), interpolation=2))
+        ts.append(T.RandomResizedCrop(PATH_SIZE, interpolation=2))
     else:
-        ts.append(T.Resize((512, 512), interpolation=2))
+        ts.append(T.Resize(PATH_SIZE, interpolation=2))
     ts.append(T.ToTensor())
     return T.Compose(ts)
 

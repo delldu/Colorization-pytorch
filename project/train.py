@@ -28,11 +28,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--outputdir', type=str,
                         default="output", help="output directory")
-    parser.add_argument('--checkpoint', type=str,
-                        default="output/ImageColor.pth", help="checkpoint file")
-    parser.add_argument('--bs', type=int, default=8, help="batch size")
+    parser.add_argument('--checkpoint_g', type=str,
+                        default="output/ImageColor_G.pth", help="checkpoint G file")
+    parser.add_argument('--checkpoint_d', type=str,
+                        default="output/ImageColor_D.pth", help="checkpoint D file")
+    parser.add_argument('--bs', type=int, default=16, help="batch size")
     parser.add_argument('--lr', type=float, default=1e-4, help="learning rate")
-    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--epochs', type=int, default=1000)
     args = parser.parse_args()
 
     # Create directory to store weights
@@ -43,35 +45,36 @@ if __name__ == "__main__":
     device = torch.device(os.environ["DEVICE"])
 
     # get model
-    model = get_model()
-    model_load(model, args.checkpoint)
+    model = get_model(trainning = True)
+    model.set_optimizer(args.lr)
+
+    model_load(model.net_G, args.checkpoint_g)
+    if model.use_D:
+        model_load(model.net_D, args.checkpoint_d)
+
     model.to(device)
 
-    # construct optimizer and learning rate scheduler,
-    # xxxx--modify here
-    params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = optim.SGD(params, lr=args.lr,
-                          momentum=0.9, weight_decay=0.0005)
-    lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
-
-    if os.environ["ENABLE_APEX"] == "YES":
-        from apex import amp
-        model, optimizer = amp.initialize(model, optimizer, opt_level="O1")
+    lr_scheduler_G = optim.lr_scheduler.StepLR(model.optimizer_G, step_size=100, gamma=0.1)
+    if model.use_D:
+        lr_scheduler_D = optim.lr_scheduler.StepLR(model.optimizer_D, step_size=100, gamma=0.1)
 
     # get data loader
     train_dl, valid_dl = get_data(trainning=True, bs=args.bs)
 
     for epoch in range(args.epochs):
-        print("Epoch {}/{}, learning rate: {} ...".format(epoch +
-                                                          1, args.epochs, lr_scheduler.get_last_lr()))
+        print("Epoch {}/{}, learning rate: {} ...".format(epoch + 1,
+            args.epochs, lr_scheduler_G.get_last_lr()))
 
-        train_epoch(train_dl, model, optimizer, device, tag='train')
-
+        train_epoch(train_dl, model, device, tag='train')
         valid_epoch(valid_dl, model, device, tag='valid')
 
-        lr_scheduler.step()
+        lr_scheduler_G.step()
+        if model.use_D:
+            lr_scheduler_D.step()
 
-        # xxxx--modify here
-        if epoch == (args.epochs // 2) or (epoch == args.epochs - 1):
-            model_save(model, os.path.join(
-                args.outputdir, "latest-checkpoint.pth"))
+        if (epoch + 1) % 100 == 0 or (epoch == args.epochs - 1):
+            model_save(model.net_G, os.path.join(
+                args.outputdir, "ImageColor_G_{}.pth".format(epoch + 1)))
+            if (model.use_D):
+                model_save(model.net_G, os.path.join(
+                    args.outputdir, "ImageColor_D_{}.pth".format(epoch + 1)))

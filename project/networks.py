@@ -168,7 +168,6 @@ class GANLoss(nn.Module):
             self.loss = nn.BCELoss()
 
     def get_target_tensor(self, input, target_is_real):
-        pdb.set_trace()
         if target_is_real:
             target_tensor = self.real_label
         else:
