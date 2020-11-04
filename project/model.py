@@ -19,9 +19,17 @@ import torch.nn as nn
 from tqdm import tqdm
 
 from networks import define_G, define_D, GANLoss, L1Loss
-from data import ImagePool, rgb2lab, lab2rgb, color_sample
+from data import ImagePool, rgb2lab, lab2rgb, Lab2rgb, color_sample
 
 import pdb
+
+
+def PSNR(img1, img2):
+    """PSNR."""
+    difference = (1.*img1-img2)**2
+    mse = torch.sqrt(torch.mean(difference)) + 0.000001
+    return 20*torch.log10(1./mse)
+
 
 class ImageColorModel(nn.Module):
     """ImageColor Model."""
@@ -44,10 +52,10 @@ class ImageColorModel(nn.Module):
         init_type = 'normal'
         gpu_ids = [0]
         self.netG = define_G(num_in, output_nc, ngf,
-                                      which_model_netG, norm, 
-                                      use_dropout, init_type,
-                                      gpu_ids,
-                                      use_tanh=True)
+                             which_model_netG, norm,
+                             use_dropout, init_type,
+                             gpu_ids,
+                             use_tanh=True)
 
         if self.trainning:
             use_sigmoid = True
@@ -55,13 +63,14 @@ class ImageColorModel(nn.Module):
             which_model_netD = 'basic'
             n_layers_D = 3
             self.netD = define_D(input_nc + output_nc, ndf,
-                                              which_model_netD,
-                                              n_layers_D, norm, use_sigmoid,
-                                              init_type, gpu_ids)
+                                 which_model_netD,
+                                 n_layers_D, norm, use_sigmoid,
+                                 init_type, gpu_ids)
 
         if self.trainning:
             self.fake_AB_pool = ImagePool(64)
-            self.criterionGAN = GANLoss(use_lsgan=False).to(os.environ["DEVICE"])
+            self.criterionGAN = GANLoss(
+                use_lsgan=False).to(os.environ["DEVICE"])
             self.criterionL1 = L1Loss()
 
             self.criterionCE = torch.nn.CrossEntropyLoss()
@@ -79,7 +88,6 @@ class ImageColorModel(nn.Module):
                 self.optimizer_D = torch.optim.Adam(self.netD.parameters(),
                                                     lr=lr, betas=(beta, 0.999))
                 self.optimizers.append(self.optimizer_D)
-
 
     def forward(self, x):
         """Forward."""
@@ -250,17 +258,16 @@ def valid_epoch(loader, model, device, tag=''):
             data_lab = rgb2lab(images)
             data['A'] = data_lab[:, [0, ], :, :]
             data['B'] = data_lab[:, 1:, :, :]
-            color_sample(data, p = 0.05)
+            color_sample(data, p=0.01)
 
             # Predict results without calculating gradients
             # self.netG(self.real_A, self.hint, self.mask)
             with torch.no_grad():
                 (fake_class, fake) = model(data['A'], data['hint'], data['mask'])
 
-            # xxxx--modify here
-            loss_value = 0.0001
+            loss_value = PSNR(Lab2rgb(data['A'], data['B']), Lab2rgb(data['A'], fake))
             valid_loss.update(loss_value, count)
-            t.set_postfix(loss='{:.6f}'.format(valid_loss.avg))
+            t.set_postfix(PSNR='{:.6f}'.format(valid_loss.avg))
             t.update(count)
 
 
@@ -316,7 +323,7 @@ def infer_perform():
     model_setenv()
     device = os.environ["DEVICE"]
 
-    model = get_model(trainning = False).netG
+    model = get_model(trainning=False).netG
     model.eval()
     model = model.to(device)
 
@@ -327,7 +334,9 @@ def infer_perform():
         input = input.to(device)
 
         with torch.no_grad():
-            output = model(input[:, 0:1, :, :], input[:, 1:3, :, :], input[:, 3:4, :, :])
+            output = model(input[:, 0:1, :, :],
+                           input[:, 1:3, :, :], input[:, 3:4, :, :])
+
 
 if __name__ == '__main__':
     """Test model ..."""

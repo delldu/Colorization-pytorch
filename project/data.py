@@ -139,6 +139,8 @@ def lab2rgb(lab_rs):
     out = xyz2rgb(lab2xyz(lab))
     return out
 
+def Lab2rgb(L, ab):
+    return lab2rgb(torch.cat((L, ab), dim=1))
 
 def color_sample(data, p=.01):
     N, C, H, W = data['B'].shape
@@ -146,20 +148,21 @@ def color_sample(data, p=.01):
     data['hint'] = torch.zeros_like(data['B'])
     data['mask'] = torch.zeros_like(data['A'])
     total = int(H * W * p * p)
+    
+    if (total > 0):
+        for nn in range(N):
+            count = 0
+            while(count < total):
+                P = random.choice([3, 4, 5, 6])  # patch size
+                # uniform distribution
+                h = random.randint(0, H-P+1)
+                w = random.randint(0, W-P+1)
 
-    for nn in range(N):
-        count = 0
-        while(count < total):
-            P = random.choice([3, 4, 5, 6])  # patch size
-            # uniform distribution
-            h = random.randint(0, H-P+1)
-            w = random.randint(0, W-P+1)
+                data['hint'][nn, :, h:h+P, w:w+P] = torch.mean(torch.mean(
+                    data['B'][nn, :, h:h+P, w:w+P], dim=2, keepdim=True), dim=1, keepdim=True).view(1, C, 1, 1)
 
-            data['hint'][nn, :, h:h+P, w:w+P] = torch.mean(torch.mean(
-                data['B'][nn, :, h:h+P, w:w+P], dim=2, keepdim=True), dim=1, keepdim=True).view(1, C, 1, 1)
-
-            data['mask'][nn, :, h:h+P, w:w+P] = 1
-            count += 1
+                data['mask'][nn, :, h:h+P, w:w+P] = 1
+                count += 1
 
     data['mask'] -= 0.5
 

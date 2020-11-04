@@ -18,8 +18,10 @@ import torchvision.transforms as transforms
 from PIL import Image
 from tqdm import tqdm
 
-from data import rgb2lab, lab2rgb
+from data import rgb2lab, Lab2rgb, color_sample
 from model import get_model, model_load, model_setenv
+
+import pdb
 
 if __name__ == "__main__":
     """Predict."""
@@ -29,7 +31,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint', type=str,
                         default="output/ImageColor_G.pth", help="checkpint file")
-    parser.add_argument('--input', type=str, required=True, help="input image")
+    parser.add_argument('--input', type=str, default="dataset/test/*.png", help="input image")
     args = parser.parse_args()
 
     # CPU or GPU ?
@@ -41,7 +43,8 @@ if __name__ == "__main__":
     model.eval()
 
     if os.environ["ENABLE_APEX"] == "YES":
-        model, = amp.initialize(model, opt_level="O1")
+        from apex import amp
+        model = amp.initialize(model, opt_level="O1")
 
     totensor = transforms.ToTensor()
     toimage = transforms.ToPILImage()
@@ -55,8 +58,19 @@ if __name__ == "__main__":
         image = Image.open(filename).convert("RGB")
         input_tensor = totensor(image).unsqueeze(0).to(device)
 
-        with torch.no_grad():
-            output_tensor = model(input_tensor).clamp(0, 1.0).squeeze()
+        data = {}
+        data_lab = rgb2lab(input_tensor)
+        data['A'] = data_lab[:, [0, ], :, :]
+        data['B'] = data_lab[:, 1:, :, :]
+        color_sample(data, p=0.005)
+        del input_tensor
 
-        # xxxx--modify here
-        toimage(output_tensor.cpu()).show()
+        with torch.no_grad():
+            (fake_class, fake) = model(data['A'], data['hint'], data['mask'])
+
+        output_tensor = Lab2rgb(data['A'], fake).clamp(0, 1.0).squeeze()
+
+        # toimage(output_tensor.cpu()).show()
+        toimage(output_tensor.cpu()).save("output/color_{}".format(os.path.basename(filename)))
+
+        del data, fake_class, fake, output_tensor
