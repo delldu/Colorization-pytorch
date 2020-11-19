@@ -12,6 +12,7 @@
 
 import os
 import random
+
 import torch
 import torch.utils.data as data
 import torchvision.transforms as T
@@ -143,6 +144,7 @@ def lab2rgb(lab_rs):
 def Lab2rgb(L, ab):
     return lab2rgb(torch.cat((L, ab), dim=1))
 
+
 def ab2index(ab):
     # Encode ab into index with quant
     # Input: ab -- Nx2xHxW in [-1,1]
@@ -154,6 +156,7 @@ def ab2index(ab):
     ab_rs = torch.round((ab * ab_norm + ab_max)/ab_quant)
     q = ab_rs[:, [0], :, :] * A + ab_rs[:, [1], :, :]
     return q
+
 
 def color_sample(data, p=.01):
     N, C, H, W = data['B'].shape
@@ -225,7 +228,7 @@ class ImagePool():
 
 def get_transform(train=True):
     """Transform images."""
-    PATH_SIZE=(256, 256)
+    PATH_SIZE = (256, 256)
     ts = []
     if train:
         # ts.append(T.RandomHorizontalFlip(0.5))
@@ -283,6 +286,7 @@ def train_data(bs):
         train_dataset_rootdir, get_transform(train=True))
     print(train_ds)
 
+    # Split train_ds in train and valid set
     valid_len = int(0.2 * len(train_ds))
     indices = [i for i in range(len(train_ds) - valid_len, len(train_ds))]
 
@@ -294,7 +298,7 @@ def train_data(bs):
     train_dl = data.DataLoader(
         train_ds, batch_size=bs, shuffle=True, num_workers=4)
     valid_dl = data.DataLoader(
-        valid_ds, batch_size=bs * 2, shuffle=False, num_workers=4)
+        valid_ds, batch_size=bs, shuffle=False, num_workers=4)
 
     return train_dl, valid_dl
 
@@ -305,7 +309,7 @@ def test_data(bs):
     test_ds = ImageColorDataset(
         test_dataset_rootdir, get_transform(train=False))
     test_dl = data.DataLoader(
-        test_ds, batch_size=bs * 2, shuffle=False, num_workers=4)
+        test_ds, batch_size=bs, shuffle=False, num_workers=4)
 
     return test_dl
 

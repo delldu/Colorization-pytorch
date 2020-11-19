@@ -12,6 +12,7 @@
 import argparse
 import glob
 import os
+import pdb
 
 import torch
 import torchvision.transforms as transforms
@@ -19,14 +20,12 @@ from PIL import Image
 from tqdm import tqdm
 
 from data import rgb2lab, Lab2rgb, color_sample, multiple_crop
-from model import get_model, model_load, model_setenv
+from model import get_model, model_load, enable_amp, model_device
 
 import pdb
 
 if __name__ == "__main__":
     """Predict."""
-
-    model_setenv()
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint', type=str,
@@ -35,17 +34,13 @@ if __name__ == "__main__":
                         default="dataset/test/*.png", help="input image")
     args = parser.parse_args()
 
-    # CPU or GPU ?
-    device = torch.device(os.environ["DEVICE"])
-
     model = get_model(trainning=False).net_G
+    device = model_device()
     model_load(model, args.checkpoint)
     model.to(device)
     model.eval()
 
-    if os.environ["ENABLE_APEX"] == "YES":
-        from apex import amp
-        model = amp.initialize(model, opt_level="O1")
+    enable_amp(model)
 
     totensor = transforms.ToTensor()
     toimage = transforms.ToPILImage()

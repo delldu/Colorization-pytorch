@@ -16,9 +16,10 @@ import sys
 
 import torch
 import torch.nn as nn
+from apex import amp
 from tqdm import tqdm
 
-from networks import define_G, define_D, GANLoss, L1Loss
+from model_helper import define_G, define_D, GANLoss, L1Loss
 from data import ImagePool, rgb2lab, lab2rgb, Lab2rgb, color_sample, ab2index
 
 import pdb
@@ -52,10 +53,10 @@ class ImageColorModel(nn.Module):
         init_type = 'normal'
         gpu_ids = [0]
         self.net_G = define_G(num_in, output_nc, ngf,
-                             which_model_netG, norm,
-                             use_dropout, init_type,
-                             gpu_ids,
-                             use_tanh=True)
+                              which_model_netG, norm,
+                              use_dropout, init_type,
+                              gpu_ids,
+                              use_tanh=True)
 
         if self.trainning:
             use_sigmoid = True
@@ -63,14 +64,15 @@ class ImageColorModel(nn.Module):
             which_model_netD = 'basic'
             n_layers_D = 3
             self.net_D = define_D(input_nc + output_nc, ndf,
-                                 which_model_netD,
-                                 n_layers_D, norm, use_sigmoid,
-                                 init_type, gpu_ids)
+                                  which_model_netD,
+                                  n_layers_D, norm, use_sigmoid,
+                                  init_type, gpu_ids)
 
         if self.trainning:
             self.fake_AB_pool = ImagePool(64)
             # xxxx
-            self.criterionGAN = GANLoss(use_lsgan=True).to(os.environ["DEVICE"])
+            self.criterionGAN = GANLoss(
+                use_lsgan=True).to(os.environ["DEVICE"])
             self.criterionL1 = L1Loss()
 
             self.criterionCE = torch.nn.CrossEntropyLoss()
@@ -103,7 +105,8 @@ class ImageColorModel(nn.Module):
         # (Pdb) pp self.real_B_enc.size()
         # torch.Size([1, 1, 64, 64])
 
-        (self.fake_B_class, self.fake_B) = self.net_G(self.real_A, self.hint_B, self.mask_B)
+        (self.fake_B_class, self.fake_B) = self.net_G(
+            self.real_A, self.hint_B, self.mask_B)
 
         # if(self.use_D):
         #     # update D
@@ -135,7 +138,8 @@ class ImageColorModel(nn.Module):
 
     def backward_D(self):
         # Fake
-        fake_AB = self.fake_AB_pool.query(torch.cat((self.real_A, self.fake_B), 1))
+        fake_AB = self.fake_AB_pool.query(
+            torch.cat((self.real_A, self.fake_B), 1))
         pred_fake = self.net_D(fake_AB.detach())
         self.loss_D_fake = self.criterionGAN(pred_fake, False)
 
@@ -163,7 +167,7 @@ class ImageColorModel(nn.Module):
                 self.real_B_enc[:, 0, :, :].type(torch.cuda.LongTensor))
 
             self.loss_G_L1 = 10 * torch.mean(self.criterionL1(
-                self.fake_B.type(torch.cuda.FloatTensor), 
+                self.fake_B.type(torch.cuda.FloatTensor),
                 self.real_B.type(torch.cuda.FloatTensor)))
             self.loss_G = self.loss_G_CE * lambda_A + self.loss_G_L1
             # pdb.set_trace()
@@ -171,7 +175,7 @@ class ImageColorModel(nn.Module):
     def backward_G(self):
         self.compute_losses_G()
         self.loss_G.backward()
-    
+
     def set_requires_grad(self, nets, requires_grad=False):
         if not isinstance(nets, list):
             nets = [nets]
@@ -179,6 +183,7 @@ class ImageColorModel(nn.Module):
             if net is not None:
                 for param in net.parameters():
                     param.requires_grad = requires_grad
+
 
 def model_load(model, path):
     """Load model."""
@@ -203,35 +208,38 @@ def model_save(model, path):
     torch.save(model.state_dict(), path)
 
 
-def model_export():
-    """Export model to onnx."""
+def export_onnx_model():
+    """Export onnx model."""
 
     import onnx
     from onnx import optimizer
 
-    # xxxx--modify here
-    onnx_file = "model.onnx"
-    weight_file = "checkpoint/weight.pth"
+    onnx_file = "output/image_color.onnx"
+    weight_file = "output/ImageColor.pth"
 
     # 1. Load model
     print("Loading model ...")
-    model = ImageColorModel()
+    model = get_model()
     model_load(model, weight_file)
     model.eval()
 
     # 2. Model export
     print("Export model ...")
-    # xxxx--modify here
     dummy_input = torch.randn(1, 3, 512, 512)
+
     input_names = ["input"]
-    output_names = ["output"]
+    output_names = ["noise_level", "output"]
+    # variable lenght axes
+    dynamic_axes = {'input': {0: 'batch_size', 1: 'channel', 2: "height", 3: 'width'},
+                    'output': {0: 'batch_size', 1: 'channel', 2: "height", 3: 'width'}}
     torch.onnx.export(model, dummy_input, onnx_file,
                       input_names=input_names,
                       output_names=output_names,
                       verbose=True,
                       opset_version=11,
                       keep_initializers_as_inputs=True,
-                      export_params=True)
+                      export_params=True,
+                      dynamic_axes=dynamic_axes)
 
     # 3. Optimize model
     print('Checking model ...')
@@ -245,11 +253,31 @@ def model_export():
     onnx.save(optimized_model, onnx_file)
 
     # 4. Visual model
-    # python -c "import netron; netron.start('model.onnx')"
+    # python -c "import netron; netron.start('image_clean.onnx')"
+
+
+def export_torch_model():
+    """Export torch model."""
+
+    script_file = "output/image_color.pt"
+    weight_file = "output/ImageColor.pth"
+
+    # 1. Load model
+    print("Loading model ...")
+    model = get_model()
+    model_load(model, weight_file)
+    model.eval()
+
+    # 2. Model export
+    print("Export model ...")
+    dummy_input = torch.randn(1, 3, 512, 512)
+    traced_script_module = torch.jit.trace(model, dummy_input)
+    traced_script_module.save(script_file)
 
 
 def get_model(trainning=True):
     """Create model."""
+    model_setenv()
     model = ImageColorModel(trainning)
     return model
 
@@ -319,7 +347,8 @@ def train_epoch(loader, model, device, tag=''):
                     print("Loss D is {}, stopping training".format(loss_value))
                     sys.exit(1)
                 total_loss_D.update(loss_value, count)
-                t.set_postfix(loss='G:{:.6f},D:{:.6f}'.format(total_loss_G.avg, total_loss_D.avg))
+                t.set_postfix(loss='G:{:.6f},D:{:.6f}'.format(
+                    total_loss_G.avg, total_loss_D.avg))
             else:
                 t.set_postfix(loss='G:{:.6f}'.format(total_loss_G.avg))
             t.update(count)
@@ -355,12 +384,19 @@ def valid_epoch(loader, model, device, tag=''):
             # Predict results without calculating gradients
             # self.net_G(self.real_A, self.hint, self.mask)
             with torch.no_grad():
-                (fake_class, fake) = model.net_G(data['A'], data['hint'], data['mask'])
+                (fake_class, fake) = model.net_G(
+                    data['A'], data['hint'], data['mask'])
 
-            loss_value = PSNR(Lab2rgb(data['A'], data['B']), Lab2rgb(data['A'], fake))
+            loss_value = PSNR(
+                Lab2rgb(data['A'], data['B']), Lab2rgb(data['A'], fake))
             valid_loss.update(loss_value, count)
             t.set_postfix(PSNR='{:.6f}'.format(valid_loss.avg))
             t.update(count)
+
+
+def model_device():
+    """First call model_setenv. """
+    return torch.device(os.environ["DEVICE"])
 
 
 def model_setenv():
@@ -389,10 +425,7 @@ def model_setenv():
     if os.environ.get("ONLY_USE_CPU") == "YES":
         os.environ["ENABLE_APEX"] = "NO"
     else:
-        try:
-            from apex import amp
-        except:
-            os.environ["ENABLE_APEX"] = "NO"
+        os.environ["ENABLE_APEX"] = "YES"
 
     # Running on GPU if available
     if os.environ.get("ONLY_USE_CPU") == "YES":
@@ -410,16 +443,26 @@ def model_setenv():
     print("  ENABLE_APEX: ", os.environ["ENABLE_APEX"])
 
 
+def enable_amp(x):
+    """Init Automatic Mixed Precision(AMP)."""
+    if os.environ["ENABLE_APEX"] == "YES":
+        x = amp.initialize(x, opt_level="O1")
+
+
 def infer_perform():
     """Model infer performance ..."""
-    model_setenv()
-    device = os.environ["DEVICE"]
 
     model = get_model(trainning=False).net_G
+    device = model_device()
+
     model.eval()
     model = model.to(device)
+    enable_amp(model)
 
     print(model)
+
+    progress_bar = tqdm(total=100)
+    progress_bar.set_description("Test Inference Performance ...")
 
     for i in tqdm(range(100)):
         input = torch.randn(8, 4, 512, 512)
@@ -429,9 +472,16 @@ def infer_perform():
             output = model(input[:, 0:1, :, :],
                            input[:, 1:3, :, :], input[:, 3:4, :, :])
 
+        progress_bar.update(1)
+
 
 if __name__ == '__main__':
     """Test model ..."""
 
-    # model_export()
+    model = get_model()
+    print(model)
+
+    export_torch_model()
+    export_onnx_model()
+
     infer_perform()

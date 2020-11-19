@@ -17,13 +17,11 @@ import torch
 import torch.optim as optim
 
 from data import get_data
-from model import (get_model, model_load, model_save, model_setenv,
+from model import (get_model, model_load, model_save, model_device,
                    train_epoch, valid_epoch)
 
 if __name__ == "__main__":
     """Trainning model."""
-
-    model_setenv()
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--outputdir', type=str,
@@ -41,11 +39,9 @@ if __name__ == "__main__":
     if not os.path.exists(args.outputdir):
         os.makedirs(args.outputdir)
 
-    # CPU or GPU ?
-    device = torch.device(os.environ["DEVICE"])
-
     # get model
-    model = get_model(trainning = True)
+    model = get_model(trainning=True)
+    device = model_device()
     model.set_optimizer(args.lr)
 
     model_load(model.net_G, args.checkpoint_g)
@@ -54,16 +50,18 @@ if __name__ == "__main__":
 
     model.to(device)
 
-    lr_scheduler_G = optim.lr_scheduler.StepLR(model.optimizer_G, step_size=100, gamma=0.1)
+    lr_scheduler_G = optim.lr_scheduler.StepLR(
+        model.optimizer_G, step_size=100, gamma=0.1)
     if model.use_D:
-        lr_scheduler_D = optim.lr_scheduler.StepLR(model.optimizer_D, step_size=100, gamma=0.1)
+        lr_scheduler_D = optim.lr_scheduler.StepLR(
+            model.optimizer_D, step_size=100, gamma=0.1)
 
     # get data loader
     train_dl, valid_dl = get_data(trainning=True, bs=args.bs)
 
     for epoch in range(args.epochs):
         print("Epoch {}/{}, learning rate: {} ...".format(epoch + 1,
-            args.epochs, lr_scheduler_G.get_last_lr()))
+                                                          args.epochs, lr_scheduler_G.get_last_lr()))
 
         train_epoch(train_dl, model, device, tag='train')
         valid_epoch(valid_dl, model, device, tag='valid')

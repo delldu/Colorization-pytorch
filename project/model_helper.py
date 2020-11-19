@@ -1,3 +1,14 @@
+# coding=utf-8
+#
+# /************************************************************************************
+# ***
+# ***    Copyright Dell 2020, All Rights Reserved.
+# ***
+# ***    File Author: Dell, 2020年 11月 02日 星期一 17:46:28 CST
+# ***
+# ************************************************************************************/
+#
+
 import functools
 import pdb
 
@@ -7,12 +18,13 @@ from torch.nn import init
 from torch.optim import lr_scheduler
 
 #######################################################################################
-# 
+#
 # Thew following comes from https://github.com/richzhang/colorization-pytorch.git
-# 
-# Thanks a lot. 
+#
+# Thanks a lot.
 #
 #######################################################################################
+
 
 def get_norm_layer(norm_type='instance'):
     if norm_type == 'batch':
@@ -110,7 +122,8 @@ def define_G(input_nc, output_nc, ngf, which_model_netG, norm='batch', use_dropo
         netG = UnetGenerator(input_nc, output_nc, 8, ngf,
                              norm_layer=norm_layer, use_dropout=use_dropout)
     elif which_model_netG == 'siggraph':
-        netG = SIGGRAPHGenerator(input_nc, output_nc, norm_layer=norm_layer, use_tanh=use_tanh)
+        netG = SIGGRAPHGenerator(
+            input_nc, output_nc, norm_layer=norm_layer, use_tanh=use_tanh)
     else:
         raise NotImplementedError(
             'Generator model name [%s] is not recognized' % which_model_netG)
@@ -135,6 +148,7 @@ def define_D(input_nc, ndf, which_model_netD,
         raise NotImplementedError('Discriminator model name [%s] is not recognized' %
                                   which_model_netD)
     return init_net(netD, init_type, gpu_ids)
+
 
 class L1Loss(nn.Module):
     def __init__(self):
