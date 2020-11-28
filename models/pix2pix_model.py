@@ -147,10 +147,13 @@ class Pix2PixModel(BaseModel):
         self.loss_0 = 0  # 0 for plot
 
         # classification statistics
-        self.loss_G_CE = self.criterionCE(self.fake_B_class.type(torch.cuda.FloatTensor),
-                                          self.real_B_enc[:, 0, :, :].type(torch.cuda.LongTensor))  # cross-entropy loss
-        self.loss_G_L1 = 10 * torch.mean(self.criterionL1(self.fake_B.type(torch.cuda.FloatTensor),
-                                                              self.real_B.type(torch.cuda.FloatTensor)))
+        self.loss_G_CE = self.criterionCE(
+            self.fake_B_class.type(torch.cuda.FloatTensor),
+            self.real_B_enc[:, 0, :, :].type(torch.cuda.LongTensor))
+              # cross-entropy loss
+        self.loss_G_L1 = 10 * torch.mean(self.criterionL1(
+            self.fake_B.type(torch.cuda.FloatTensor),
+            self.real_B.type(torch.cuda.FloatTensor)))
 
         if self.use_D:
             fake_AB = torch.cat((self.real_A, self.fake_B), 1)

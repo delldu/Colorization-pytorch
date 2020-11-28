@@ -169,14 +169,15 @@ def color_sample(data, p=.01):
         for nn in range(N):
             count = 0
             while(count < total):
-                P = random.choice([3, 4, 5, 6])  # patch size
+                P = random.choice([4, 6, 8, 10])  # patch size
                 # uniform distribution
                 h = random.randint(0, H-P+1)
                 w = random.randint(0, W-P+1)
 
-                data['hint'][nn, :, h:h+P, w:w+P] = torch.mean(torch.mean(
-                    data['B'][nn, :, h:h+P, w:w+P], dim=2, keepdim=True), dim=1, keepdim=True).view(1, C, 1, 1)
+                # data['hint'][nn, :, h:h+P, w:w+P] = torch.mean(torch.mean(
+                #     data['B'][nn, :, h:h+P, w:w+P], dim=2, keepdim=True), dim=1, keepdim=True).view(1, C, 1, 1)
 
+                data['hint'][nn, :, h:h+P, w:w+P] = data['B'][nn, :, h:h+P, w:w+P]
                 data['mask'][nn, :, h:h+P, w:w+P] = 1
                 count += 1
 

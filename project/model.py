@@ -475,13 +475,26 @@ def infer_perform():
         progress_bar.update(1)
 
 
+def model_parameters(net):
+    total_num = sum(p.numel() for p in net.parameters())
+    trainable_num = sum(p.numel() for p in net.parameters() if p.requires_grad)
+    return {'Total': total_num/1000000, 'Trainable': trainable_num/1000000}
+
 if __name__ == '__main__':
     """Test model ..."""
 
     model = get_model()
     print(model)
 
-    export_torch_model()
-    export_onnx_model()
+    # export_torch_model()
+    # export_onnx_model()
 
-    infer_perform()
+    # infer_perform()
+
+    print(model_parameters(model))
+
+    model.eval()
+    for p in model.parameters():
+        p.requires_grad = False
+    print(model_parameters(model))
+

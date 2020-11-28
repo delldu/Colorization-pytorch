@@ -379,15 +379,17 @@ def crop_mult(data, mult=16, HWmax=[800, 1200]):
 def encode_ab_ind(data_ab, opt):
     # Encode ab value into an index
     # INPUTS
-    #   data_ab   Nx2xHxW \in [-1,1]
+    #   data_ab   Nx2xHxW in [-1,1]
     # OUTPUTS
-    #   data_q    Nx1xHxW \in [0,Q)
+    #   data_q    Nx1xHxW in [0,Q)
 
     # normalized bin number
     # opt.ab_max = 110.0
     # opt.ab_quant = 10.0
     # opt.ab_norm = 110.0
     # opt.A = 23
+    # opt.A = 2 * opt.ab_max / opt.ab_quant + 1
+
     data_ab_rs = torch.round((data_ab*opt.ab_norm + opt.ab_max)/opt.ab_quant)
     data_q = data_ab_rs[:, [0], :, :]*opt.A + data_ab_rs[:, [1], :, :]
     # pdb.set_trace()

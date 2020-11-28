@@ -41,7 +41,10 @@ if __name__ == "__main__":
     model.eval()
 
     enable_amp(model)
-
+    model.eval()
+    for p in model.parameters():
+        p.requires_grad = False
+        
     totensor = transforms.ToTensor()
     toimage = transforms.ToPILImage()
 
@@ -52,6 +55,8 @@ if __name__ == "__main__":
         progress_bar.update(1)
 
         image = Image.open(filename).convert("RGB")
+        # (W, H) = image.size
+        # image = image.resize((W//2, H//2))
         input_tensor = totensor(image).unsqueeze(0).to(device)
         H, W = input_tensor.shape[2:]
         if (H % 8 != 0 or W % 8 != 0):

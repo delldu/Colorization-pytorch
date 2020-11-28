@@ -39,22 +39,22 @@ def get_norm_layer(norm_type='instance'):
     return norm_layer
 
 
-def get_scheduler(optimizer, opt):
-    if opt.lr_policy == 'lambda':
-        def lambda_rule(epoch):
-            lr_l = 1.0 - max(0, epoch + 1 + opt.epoch_count -
-                             opt.niter) / float(opt.niter_decay + 1)
-            return lr_l
-        scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
-    elif opt.lr_policy == 'step':
-        scheduler = lr_scheduler.StepLR(
-            optimizer, step_size=opt.lr_decay_iters, gamma=0.1)
-    elif opt.lr_policy == 'plateau':
-        scheduler = lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='min', factor=0.2, threshold=0.01, patience=5)
-    else:
-        return NotImplementedError('learning rate policy [%s] is not implemented', opt.lr_policy)
-    return scheduler
+# def get_scheduler(optimizer, opt):
+#     if opt.lr_policy == 'lambda':
+#         def lambda_rule(epoch):
+#             lr_l = 1.0 - max(0, epoch + 1 + opt.epoch_count -
+#                              opt.niter) / float(opt.niter_decay + 1)
+#             return lr_l
+#         scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
+#     elif opt.lr_policy == 'step':
+#         scheduler = lr_scheduler.StepLR(
+#             optimizer, step_size=opt.lr_decay_iters, gamma=0.1)
+#     elif opt.lr_policy == 'plateau':
+#         scheduler = lr_scheduler.ReduceLROnPlateau(
+#             optimizer, mode='min', factor=0.2, threshold=0.01, patience=5)
+#     else:
+#         return NotImplementedError('learning rate policy [%s] is not implemented', opt.lr_policy)
+#     return scheduler
 
 
 def init_weights(net, init_type='xavier', gain=0.02):
@@ -158,13 +158,13 @@ class L1Loss(nn.Module):
         return torch.sum(torch.abs(in0 - in1), dim=1, keepdim=True)
 
 
-class L2Loss(nn.Module):
-    def __init__(self):
-        super(L2Loss, self).__init__()
+# class L2Loss(nn.Module):
+#     def __init__(self):
+#         super(L2Loss, self).__init__()
 
-    def __call__(self, in0, in1):
-        pdb.set_trace()
-        return torch.sum((in0 - in1)**2, dim=1, keepdim=True)
+#     def __call__(self, in0, in1):
+#         pdb.set_trace()
+#         return torch.sum((in0 - in1)**2, dim=1, keepdim=True)
 
 
 # Defines the GAN loss which uses either LSGAN or the regular GAN.
@@ -600,12 +600,14 @@ class UnetSkipConnectionBlock(nn.Module):
                 model = down + [submodule] + up
 
         self.model = nn.Sequential(*model)
+        pdb.set_trace()
 
     def forward(self, x):
         if self.outermost:
             return self.model(x)
         else:
             return torch.cat([x, self.model(x)], 1)
+        pdb.set_trace()
 
 
 # Defines the PatchGAN discriminator with the specified arguments.
@@ -678,6 +680,8 @@ class PixelDiscriminator(nn.Module):
             self.net.append(nn.Sigmoid())
 
         self.net = nn.Sequential(*self.net)
+
+        pdb.set_trace()
 
     def forward(self, input):
         return self.net(input)
