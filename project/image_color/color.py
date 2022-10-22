@@ -17,6 +17,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from typing import List, Tuple
+
 from . import data
 
 # https://github.com/richzhang/colorization-pytorch.git
@@ -148,7 +150,6 @@ class Generator(nn.Module):
         model10up = [
             nn.ConvTranspose2d(128, 128, kernel_size=4, stride=2, padding=1, bias=True),
         ]
-
         model1short10 = [
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1, bias=True),
         ]
@@ -184,22 +185,12 @@ class Generator(nn.Module):
         self.model3short8 = nn.Sequential(*model3short8)
         self.model2short9 = nn.Sequential(*model2short9)
         self.model1short10 = nn.Sequential(*model1short10)
-
         self.model_class = nn.Sequential(*model_class)
         self.model_out = nn.Sequential(*model_out)
 
-        # self.upsample4 = nn.Sequential(*[nn.Upsample(scale_factor=4, mode='bilinear'),])
-        self.softmax = nn.Sequential(
-            *[
-                nn.Softmax(dim=1),
-            ]
-        )
-
     def forward_x(self, rgba):
-        # input = torch.cat((input_A, input_B, mask_B), dim=1)
-        input = data.rgba2lab(rgba)
-        lab_l = input[:, 0:1, :, :]
-        # lab_m = input[:, 3:4, :, :]
+        input = data.rgba2lab(rgba)  # [0.0, 1.0]
+        lab_l = input[:, 0:1, :, :]  # [-0.5, 0.5], lab_ab in [-1.0, 1.0]
 
         conv1_2 = self.model1(input)
 
@@ -223,9 +214,7 @@ class Generator(nn.Module):
         out_reg = self.model_out(conv10_2)
 
         # out_class
-        output = data.Lab2rgb(lab_l, out_reg)
-
-        return output.clamp(0.0, 1.0)
+        return data.Lab2rgb(lab_l, out_reg)
 
     def forward(self, x):
         # Define max GPU/CPU memory -- 4G
@@ -242,23 +231,20 @@ class Generator(nn.Module):
         else:
             resize_x = x
 
-        # Need Zero Pad ?
-        ZH, ZW = resize_x.size(2), resize_x.size(3)
-        if ZH % multi_times != 0 or ZW % multi_times != 0:
-            NH = multi_times * math.ceil(ZH / multi_times)
-            NW = multi_times * math.ceil(ZW / multi_times)
-            resize_zeropad_x = resize_x.new_zeros(B, C, NH, NW)
-            resize_zeropad_x[:, :, 0:ZH, 0:ZW] = resize_x
+        # Need Pad ?
+        PH, PW = resize_x.size(2), resize_x.size(3)
+        if PH % multi_times != 0 or PW % multi_times != 0:
+            r_pad = multi_times - (PW % multi_times)
+            b_pad = multi_times - (PH % multi_times)
+            resize_pad_x = F.pad(resize_x, (0, r_pad, 0, b_pad), mode="replicate")
         else:
-            resize_zeropad_x = resize_x
+            resize_pad_x = resize_x
 
-        # MS Begin
-        y = self.forward_x(resize_zeropad_x)
-        del resize_zeropad_x, resize_x  # Release memory !!!
+        y = self.forward_x(resize_pad_x)
+        del resize_pad_x, resize_x  # Release memory !!!
 
-        y = y[:, :, 0:ZH, 0:ZW]  # Remove Zero Pads
-        if ZH != H or ZW != W:
+        y = y[:, :, 0:PH, 0:PW]  # Remove Pads
+        if PH != H or PW != W:
             y = F.interpolate(y, size=(H, W), mode="bilinear", align_corners=False)
-        # MS End
 
         return y

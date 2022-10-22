@@ -135,16 +135,16 @@ def color_sample(rgba, p=0.01):
     # rgb to gray, 0.299f * r + 0.587 * g + 0.114 * b
     gray = rgb_clone[:, 0:1, :, :] * 0.299 + rgb_clone[:, 1:2, :, :] * 0.587 + rgb_clone[:, 2:3, :, :] * 0.114
 
-    rgba[:, 3:4, :, :] = 0.0  # clean mask
     rgba[:, 0:1, :, :] = gray
     rgba[:, 1:2, :, :] = gray
     rgba[:, 2:3, :, :] = gray
+    rgba[:, 3:4, :, :] = 0.0  # clean mask
 
     while total > 0:
-        P = random.choice([2, 3, 4])  # patch size
+        P = random.choice([1, 2])  # patch size
         # uniform distribution
-        h = random.randint(0, H - P + 1)
-        w = random.randint(0, W - P + 1)
+        h = random.randint(0, H - P)
+        w = random.randint(0, W - P)
 
         rgba[:, 0:3, h : h + P, w : w + P] = rgb_clone[:, 0:3, h : h + P, w : w + P]  # copy ab
         rgba[:, 3:4, h : h + P, w : w + P] = 1.0  # set ab

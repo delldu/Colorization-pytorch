@@ -37,7 +37,9 @@ def get_model():
     model = model.to(device)
     model.eval()
 
+    print(f"Running model on {device} ...")
     model = torch.jit.script(model)
+
     todos.data.mkdir("output")
     if not os.path.exists("output/image_colour.torch"):
         model.save("output/image_colour.torch")
@@ -62,10 +64,12 @@ def image_predict(input_files, output_dir):
 
         # orig input
         input_tensor = todos.data.load_rgba_tensor(filename)
-        input_tensor = data.color_sample(input_tensor, 0.01)
+        input_tensor = data.color_sample(input_tensor, 0.05)
         # pytorch recommand clone.detach instead of torch.Tensor(input_tensor)
         orig_tensor = input_tensor.clone().detach()
+
         predict_tensor = todos.model.forward(model, device, input_tensor)
+
         output_file = f"{output_dir}/{os.path.basename(filename)}"
 
         todos.data.save_tensor([orig_tensor[:, 0:3, :, :], predict_tensor], output_file)
