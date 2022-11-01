@@ -214,7 +214,8 @@ class Generator(nn.Module):
         out_reg = self.model_out(conv10_2)
 
         # out_class
-        return data.Lab2rgb(lab_l, out_reg)
+        output = data.Lab2rgb(lab_l, out_reg)
+        return output.clamp(0.0, 1.0)
 
     def forward(self, x):
         # Define max GPU/CPU memory -- 4G
