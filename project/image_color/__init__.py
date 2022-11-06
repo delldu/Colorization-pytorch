@@ -20,10 +20,8 @@ from . import data, color
 
 import pdb
 
-COLOR_ZEROPAD_TIMES = 1
 
-
-def get_model():
+def get_colour_model():
     """Create model."""
 
     model_path = "models/image_color.pth"
@@ -52,7 +50,7 @@ def image_predict(input_files, output_dir):
     todos.data.mkdir(output_dir)
 
     # load model
-    model, device = get_model()
+    model, device = get_colour_model()
 
     # load files
     image_filenames = todos.data.load_files(input_files)
