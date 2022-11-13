@@ -12,6 +12,7 @@
 import functools
 import pdb
 
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -22,19 +23,6 @@ from . import data
 
 # https://github.com/richzhang/colorization-pytorch.git
 
-
-def get_norm_layer(norm_type="instance"):
-    if norm_type == "batch":
-        norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
-    elif norm_type == "instance":
-        norm_layer = functools.partial(nn.InstanceNorm2d, affine=False)
-    elif norm_type == "none":
-        norm_layer = None
-    else:
-        raise NotImplementedError("normalization layer [%s] is not found" % norm_type)
-    return norm_layer
-
-
 class Generator(nn.Module):
     """
     # L + ab + mask
@@ -44,7 +32,7 @@ class Generator(nn.Module):
     norm_layer = color.get_norm_layer(norm_type="batch")
     """
 
-    def __init__(self, input_nc=1, output_nc=2, norm_layer=get_norm_layer(norm_type="batch"), classes=529):
+    def __init__(self, input_nc=1, output_nc=2, classes=529):
         super(Generator, self).__init__()
         # Define max GPU/CPU memory -- 5G (1024x1024)
         self.MAX_H = 1024
@@ -60,7 +48,7 @@ class Generator(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(True),
-            norm_layer(64),
+            nn.BatchNorm2d(64, affine=True),
         ]
 
         model2 = [
@@ -68,7 +56,7 @@ class Generator(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(True),
-            norm_layer(128),
+            nn.BatchNorm2d(128, affine=True),
         ]
 
         model3 = [
@@ -78,7 +66,7 @@ class Generator(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(True),
-            norm_layer(256),
+            nn.BatchNorm2d(256, affine=True),
         ]
 
         model4 = [
@@ -88,7 +76,7 @@ class Generator(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(True),
-            norm_layer(512),
+            nn.BatchNorm2d(512, affine=True),
         ]
 
         model5 = [
@@ -98,7 +86,7 @@ class Generator(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(512, 512, kernel_size=3, dilation=2, stride=1, padding=2, bias=True),
             nn.ReLU(True),
-            norm_layer(512),
+            nn.BatchNorm2d(512, affine=True),
         ]
 
         model6 = [
@@ -108,7 +96,7 @@ class Generator(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(512, 512, kernel_size=3, dilation=2, stride=1, padding=2, bias=True),
             nn.ReLU(True),
-            norm_layer(512),
+            nn.BatchNorm2d(512, affine=True),
         ]
 
         model7 = [
@@ -118,7 +106,7 @@ class Generator(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(True),
-            norm_layer(512),
+            nn.BatchNorm2d(512, affine=True),
         ]
 
         model8up = [nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=True)]
@@ -132,7 +120,7 @@ class Generator(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(True),
-            norm_layer(256),
+            nn.BatchNorm2d(256, affine=True),
         ]
 
         model9up = [
@@ -147,7 +135,7 @@ class Generator(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(True),
-            norm_layer(128),
+            nn.BatchNorm2d(128, affine=True),
         ]
 
         # Conv10
@@ -192,7 +180,14 @@ class Generator(nn.Module):
         self.model_class = nn.Sequential(*model_class)
         self.model_out = nn.Sequential(*model_out)
 
-    def forward_x(self, rgba):
+        self.load_weights()
+
+    def load_weights(self, model_path="models/image_color.pth"):
+        cdir = os.path.dirname(__file__)
+        checkpoint = model_path if cdir == "" else cdir + "/" + model_path
+        self.load_state_dict(torch.load(checkpoint))
+
+    def forward(self, rgba):
         input = data.rgba2lab(rgba)  # [0.0, 1.0]
         lab_l = input[:, 0:1, :, :]  # [-0.5, 0.5], lab_ab in [-1.0, 1.0]
 
@@ -220,30 +215,3 @@ class Generator(nn.Module):
         # out_class
         output = data.Lab2rgb(lab_l, out_reg)
         return output.clamp(0.0, 1.0)
-
-    def forward(self, x):
-        # Need Resize ?
-        B, C, H, W = x.size()
-        if H > self.MAX_H or W > self.MAX_W:
-            s = min(self.MAX_H / H, self.MAX_W / W)
-            SH, SW = int(s * H), int(s * W)
-            resize_x = F.interpolate(x, size=(SH, SW), mode="bilinear", align_corners=False)
-        else:
-            resize_x = x
-
-        # Need Pad ?
-        PH, PW = resize_x.size(2), resize_x.size(3)
-        if PH % self.MAX_TIMES != 0 or PW % self.MAX_TIMES != 0:
-            r_pad = self.MAX_TIMES - (PW % self.MAX_TIMES)
-            b_pad = self.MAX_TIMES - (PH % self.MAX_TIMES)
-            resize_pad_x = F.pad(resize_x, (0, r_pad, 0, b_pad), mode="replicate")
-        else:
-            resize_pad_x = resize_x
-
-        y = self.forward_x(resize_pad_x)
-        del resize_pad_x, resize_x  # Release memory !!!
-
-        y = y[:, :, 0:PH, 0:PW]  # Remove Pads
-        y = F.interpolate(y, size=(H, W), mode="bilinear", align_corners=False)  # Remove Resize
-
-        return y
