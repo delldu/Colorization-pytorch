@@ -36,8 +36,9 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         # Define max GPU/CPU memory -- 5G (1024x1024)
         self.MAX_H = 1024
-        self.MAX_W = 1024
+        self.MAX_W = 2048
         self.MAX_TIMES = 8
+        # GPU 7G, 420ms
 
         self.input_nc = input_nc
         self.output_nc = output_nc

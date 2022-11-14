@@ -22,7 +22,7 @@ import image_color
 # Exception: warning unhandled case: <class 'NoneType'>
 def compile():
     model, device = image_color.get_tvm_model()
-    SO_B, SO_C, SO_H, SO_W = 1, 4, model.MAX_H, model.MAX_W
+    SO_B, SO_C, SO_H, SO_W = 1, 4, model.MAX_H//2, model.MAX_W//2
 
     todos.data.mkdir("output")
     if not os.path.exists("output/image_color.so"):
@@ -33,13 +33,13 @@ def compile():
 
 def predict(input_files, output_dir):
     model, device = image_color.get_tvm_model()
-    SO_B, SO_C, SO_H, SO_W = 1, 4, model.MAX_H, model.MAX_W
+    SO_B, SO_C, SO_H, SO_W = 1, 4, model.MAX_H//2, model.MAX_W//2
 
     # Create directory to store result
     todos.data.mkdir(output_dir)
 
     # load model
-    tvm_model = todos.tvmod.load("output/image_color.so", "cuda")
+    tvm_model = todos.tvmod.load("output/image_color.so", str(device))
 
     # load files
     image_filenames = todos.data.load_files(input_files)
