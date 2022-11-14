@@ -60,7 +60,6 @@ def predict(input_files, output_dir):
 
         start_time = time.time()
         predict_tensor = todos.tvmod.forward(tvm_model, input_tensor)
-        torch.cuda.synchronize()
         mean_time += time.time() - start_time
 
         output_file = f"{output_dir}/{os.path.basename(filename)}"
